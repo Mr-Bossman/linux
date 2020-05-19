@@ -4,7 +4,9 @@ This driver follows the generic DMA bindings defined in dma.txt.
 
 Required properties:
 
-- compatible:	Must be "allwinner,sun4i-a10-dma"
+- compatible:	Should be one of the following:
+		"allwinner,sun4i-a10-dma"
+		"allwinner,suniv-f1c100s-dma"
 - reg:		Should contain the registers base address and length
 - interrupts:	Should contain a reference to the interrupt used by this device
 - clocks:	Should contain a reference to the parent AHB clock
