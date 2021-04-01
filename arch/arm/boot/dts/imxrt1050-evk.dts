@@ -18,10 +18,13 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-	memory@80000000 {
+	memory@0 {
 		device_type = "memory";
 		reg = <0x80000000 0x2000000>;
 	};
+	/*soc {
+		ranges = <0x00000000 0x00000000 0x00000000>;
+	};*/
 };
 
 &lpuart1 { /* console */
