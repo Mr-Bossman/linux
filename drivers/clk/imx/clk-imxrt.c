@@ -121,7 +121,7 @@ static void __init imxrt_clocks_init(struct device_node *np)
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL1_BYPASS], clk[IMXRT1060_CLK_PLL1_REF_SEL]);
 
-	clk_enable(clk[IMXRT1060_CLK_PLL1_ARM]);
+	clk_prepare_enable(clk[IMXRT1060_CLK_PLL1_ARM]);
 	clk_set_rate(clk[IMXRT1060_CLK_PLL1_ARM], 1056000000UL);
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL1_BYPASS], clk[IMXRT1060_CLK_PLL1_ARM]);
@@ -129,13 +129,13 @@ static void __init imxrt_clocks_init(struct device_node *np)
 	clk_set_parent(clk[IMXRT1060_CLK_SEMC_SEL], clk[IMXRT1060_CLK_SEMC_ALT_SEL]);
 
 
-	clk_enable(clk[IMXRT1060_CLK_PLL2_SYS]);
+	clk_prepare_enable(clk[IMXRT1060_CLK_PLL2_SYS]);
 	clk_set_rate(clk[IMXRT1060_CLK_PLL2_SYS], 528000000UL);
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL2_BYPASS], clk[IMXRT1060_CLK_PLL2_SYS]);
 
 
-	clk_enable(clk[IMXRT1060_CLK_PLL3_USB_OTG]);
+	clk_prepare_enable(clk[IMXRT1060_CLK_PLL3_USB_OTG]);
 	clk_set_rate(clk[IMXRT1060_CLK_PLL3_USB_OTG], 480000000UL);
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL3_BYPASS], clk[IMXRT1060_CLK_PLL3_USB_OTG]);
@@ -152,7 +152,7 @@ static void __init imxrt_clocks_init(struct device_node *np)
 	clk_set_parent(clk1, clk);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL1_ARM, &clk);
-	clk_enable(clk);
+	clk_prepare_enable(clk);
 	clk_set_rate(clk, 1056000000UL);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL1_BYPASS, &clk1);
@@ -163,20 +163,20 @@ static void __init imxrt_clocks_init(struct device_node *np)
 	clk_set_parent(clk1, clk);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL2_SYS, &clk);
-	clk_enable(clk);
+	clk_prepare_enable(clk);
 	clk_set_rate(clk, 528000000UL);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL2_BYPASS, &clk1);
 	clk_set_parent(clk1, clk);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL3_USB_OTG, &clk);
-	clk_enable(clk);
+	clk_prepare_enable(clk);
 	clk_set_rate(clk, 480000000UL);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL3_BYPASS, &clk1);
 	clk_set_parent(clk1, clk);
 	clk_get_by_id(IMXRT1060_CLK_PLL5_VIDEO, &clk);
-	clk_enable(clk);
+	clk_prepare_enable(clk);
 	clk_set_rate(clk, 650000000UL);
 
 	clk_get_by_id(IMXRT1060_CLK_PLL5_BYPASS, &clk1);
