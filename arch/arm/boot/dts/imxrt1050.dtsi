@@ -66,7 +66,7 @@
 
 		clks: ccm@400fc000 {
 			u-boot,dm-spl;
-			compatible = "fsl,imxrt1060-ccm";
+			compatible = "fsl,imxrt-ccm";
 			reg = <0x400fc000 0x4000>;
 			interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
