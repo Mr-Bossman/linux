@@ -121,19 +121,19 @@ static void __init imxrt_clocks_init(struct device_node *np)
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL1_BYPASS], clk[IMXRT1060_CLK_PLL1_REF_SEL]);
 
-	clk_set_rate(clk[IMXRT1060_CLK_PLL1_ARM], 1056000000UL);
 	clk_prepare_enable(clk[IMXRT1060_CLK_PLL1_ARM]);
+	//clk_set_rate(clk[IMXRT1060_CLK_PLL1_ARM], 1056000000UL);
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL1_BYPASS], clk[IMXRT1060_CLK_PLL1_ARM]);
 
 	clk_set_parent(clk[IMXRT1060_CLK_SEMC_SEL], clk[IMXRT1060_CLK_SEMC_ALT_SEL]);
 
-	clk_set_rate(clk[IMXRT1060_CLK_PLL2_SYS], 528000000UL);
+	//clk_set_rate(clk[IMXRT1060_CLK_PLL2_SYS], 528000000UL);
 	clk_prepare_enable(clk[IMXRT1060_CLK_PLL2_SYS]);
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL2_BYPASS], clk[IMXRT1060_CLK_PLL2_SYS]);
 
-	clk_set_rate(clk[IMXRT1060_CLK_PLL3_USB_OTG], 480000000UL);
+	//clk_set_rate(clk[IMXRT1060_CLK_PLL3_USB_OTG], 480000000UL);
 	clk_prepare_enable(clk[IMXRT1060_CLK_PLL3_USB_OTG]);
 
 	clk_set_parent(clk[IMXRT1060_CLK_PLL3_BYPASS], clk[IMXRT1060_CLK_PLL3_USB_OTG]);
