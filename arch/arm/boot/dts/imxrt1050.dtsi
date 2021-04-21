@@ -25,6 +25,7 @@
 		serial0 = &lpuart1;
 	};
 
+
 	clocks {
 		u-boot,dm-spl;
 
@@ -50,7 +51,7 @@
 		};
 
 		lpuart1: serial@40184000 {
-			compatible = "fsl,imxrt-lpuart";
+			compatible = "fsl,imxrt-lpuart","fsl,imx8mm-uart", "fsl,imx6q-uart";
 			reg = <0x40184000 0x4000>;
 			interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks IMXRT1060_CLK_LPUART1>;

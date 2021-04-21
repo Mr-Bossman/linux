@@ -304,6 +304,7 @@ static struct lpuart_soc_data imx8qxp_data = {
 static struct lpuart_soc_data imxrt_data = {
 	.devtype = IMXRT_LPUART,
 	.iotype = UPIO_MEM32,
+	.reg_off = IMX_REG_OFF,
 };
 
 static const struct of_device_id lpuart_dt_ids[] = {
@@ -2566,6 +2567,8 @@ OF_EARLYCON_DECLARE(lpuart, "fsl,vf610-lpuart", lpuart_early_console_setup);
 OF_EARLYCON_DECLARE(lpuart32, "fsl,ls1021a-lpuart", lpuart32_early_console_setup);
 OF_EARLYCON_DECLARE(lpuart32, "fsl,ls1028a-lpuart", ls1028a_early_console_setup);
 OF_EARLYCON_DECLARE(lpuart32, "fsl,imx7ulp-lpuart", lpuart32_imx_early_console_setup);
+OF_EARLYCON_DECLARE(lpuart32, "fsl,imxrt-lpuart", lpuart32_imx_early_console_setup);
+
 EARLYCON_DECLARE(lpuart, lpuart_early_console_setup);
 EARLYCON_DECLARE(lpuart32, lpuart32_early_console_setup);
 
