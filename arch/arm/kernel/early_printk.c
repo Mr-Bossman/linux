@@ -25,19 +25,26 @@ struct lpuart_fsl_reg32 {
 	u32 fifo;
 	u32 water;
 };
-extern void printascii(const char *);
-static void printasciin(const char *s){
+static void printc(const char c){
 	u32 stat;
 	struct lpuart_fsl_reg32 *base = 0x40184000;
 	while (true) {
 		stat = readl(&base->stat);
-
 		if ((stat & STAT_TDRE))
 			break;
-
 	}
+	writel(c, &base->data);
+}
 
-	writel(s, &base->data);
+extern void printascii(const char *);
+static void printasciin(const char *s){
+	while(*s){
+		printc(*s);
+		if(*s == '\n'){
+			printc('\r');
+		}
+		s++;
+	}
 }
 
 static void early_write(const char *s, unsigned n)

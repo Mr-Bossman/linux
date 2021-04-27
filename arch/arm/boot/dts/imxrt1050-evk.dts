@@ -15,7 +15,6 @@
 
 	chosen {
 		bootargs = "root=/dev/ram";
-		stdout-path = &lpuart1;
 	};
 
 	memory@0 {
