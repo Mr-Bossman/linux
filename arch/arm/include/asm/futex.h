@@ -104,7 +104,7 @@ futex_atomic_cmpxchg_inatomic(u32 *uval, u32 __user *uaddr,
 	int ret = 0;
 	u32 val;
 
-	if (!access_ok(uaddr, sizeof(u32)))
+	if(!uaddr)
 		return -EFAULT;
 
 	preempt_disable();
