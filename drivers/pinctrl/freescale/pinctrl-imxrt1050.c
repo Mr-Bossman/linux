@@ -11,7 +11,8 @@
 #include <linux/platform_device.h>
 
 #include "pinctrl-imx.h"
-
+// \/ coresponds to the offset from the pin mux every 32 bits 4 bytes defined also defined in bytes in the device tree
+// most are wrong here
 enum imxrt1050_pads {
 	IMXRT1050_PAD_RESERVE0 = 0,
 	IMXRT1050_PAD_RESERVE1 = 1,
