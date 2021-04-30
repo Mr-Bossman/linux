@@ -24,13 +24,9 @@
 		mmc0 = &usdhc1;
 		serial0 = &lpuart1;
 	};
-
-
 	clocks {
-		u-boot,dm-spl;
 
 		osc {
-			u-boot,dm-spl;
 			compatible = "fsl,imx-osc", "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <24000000>;
@@ -38,7 +34,7 @@
 	};
 
 	soc {
-		u-boot,dm-spl;
+
 
 		semc: semc@402f0000 {
 			u-boot,dm-spl;
@@ -55,7 +51,7 @@
 			reg = <0x40184000 0x4000>;
 			interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks IMXRT1060_CLK_LPUART1>;
-			clock-names = "per";
+			clock-names = "ipg";
 			status = "disabled";
 		};
 
@@ -158,7 +154,7 @@
 		gpt: timer@401ec000 {
 			compatible = "fsl,imx53-gpt", "fsl,imx31-gpt";
 			reg = <0x401ec000 0x4000>;
-			interrupts = <100>;
+			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clks IMXRT1060_CLK_DUMMY>;
 			clock-names = "per";
 		};

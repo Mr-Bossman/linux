@@ -6,7 +6,6 @@
 
 /dts-v1/;
 #include "imxrt1050.dtsi"
-#include "imxrt1050-evk-u-boot.dtsi"
 #include <dt-bindings/pinctrl/pins-imxrt1050.h>
 
 / {
@@ -15,6 +14,7 @@
 
 	chosen {
 		bootargs = "root=/dev/ram";
+		stdout-path = &lpuart1;
 	};
 
 	memory@0 {
