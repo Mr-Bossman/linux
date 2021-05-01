@@ -415,7 +415,7 @@ static int imxrt_semc_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to enable clock\n");
 		return ret;
 	}
-	ret = imxrt_sdram_init(dev);
+	//ret = imxrt_sdram_init(dev);
 	if (ret)
 		return ret;
     
