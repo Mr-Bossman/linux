@@ -13,6 +13,7 @@
 #include <linux/regmap.h>
 #include <linux/reset.h>
 
+
 /* SDRAM Command Code */
 #define SD_CC_ARD		0x0     /* Master Bus (AXI) command - Read */
 #define SD_CC_AWR		0x1     /* Master Bus (AXI) command - Write */
@@ -176,7 +177,7 @@ struct imxrt_sdram_params {
 	struct bank_params bank_params[MAX_SDRAM_BANK];
 	u8 no_sdram_banks;
 };
-/*
+
 static int imxrt_sdram_wait_ipcmd_done(struct imxrt_semc_regs *regs)
 {
 	do {
@@ -200,13 +201,13 @@ static int imxrt_sdram_ipcmd(struct imxrt_semc_regs *regs, u32 mem_addr,
 		writel(wd, &regs->iptxdat);
 
 	/* set slave address for every command as specified on RM */
-	//writel(mem_addr, &regs->ipcr0);
+	writel(mem_addr, &regs->ipcr0);
 
 	/* execute command */
-	//writel(SEMC_IPCMD_KEY | ipcmd, &regs->ipcmd);
+	writel(SEMC_IPCMD_KEY | ipcmd, &regs->ipcmd);
 
-	//ret = imxrt_sdram_wait_ipcmd_done(regs);
-	/*if (ret < 0)
+	ret = imxrt_sdram_wait_ipcmd_done(regs);
+	if (ret < 0)
 		return ret;
 
 	if (ipcmd == SD_CC_IRD) {
@@ -219,9 +220,9 @@ static int imxrt_sdram_ipcmd(struct imxrt_semc_regs *regs, u32 mem_addr,
 	return 0;
 }
 
-int imxrt_sdram_init(struct udevice *dev)
+int imxrt_sdram_init(struct device *dev)
 {
-	struct imxrt_sdram_params *params = dev_get_plat(dev);
+	struct imxrt_sdram_params *params = dev->platform_data;
 	struct imxrt_sdram_mux *mux = params->sdram_mux;
 	struct imxrt_sdram_control *ctrl = params->sdram_control;
 	struct imxrt_sdram_timing *time = params->sdram_timing;
@@ -229,12 +230,15 @@ int imxrt_sdram_init(struct udevice *dev)
 	struct bank_params *bank_params;
 	u32 rd;
 	int i;
-*/
 	/* enable the SEMC controller */
-	//clrbits_le32(&regs->mcr, SEMC_MCR_MDIS);
-	/* set DQS mode from DQS pad */
-	//setbits_le32(&regs->mcr, SEMC_MCR_DQSMD);
-/*
+	rd = readl(&regs->mcr);
+    rd &= ~SEMC_MCR_MDIS;
+    writel(rd,&regs->mcr);
+    
+    /* set DQS mode from DQS pad */
+    rd |= SEMC_MCR_DQSMD;
+    writel(rd,&regs->mcr);
+
 	for (i = 0, bank_params = params->bank_params;
 		i < params->no_sdram_banks; bank_params++,
 		i++)
@@ -298,7 +302,7 @@ int imxrt_sdram_init(struct udevice *dev)
 
 	return 0;
 }
-
+/*
 static int imxrt_semc_of_to_plat(struct udevice *dev)
 {
 	struct imxrt_sdram_params *params = dev_get_plat(dev);
@@ -386,35 +390,35 @@ static int imxrt_semc_of_to_plat(struct udevice *dev)
 */
 static int imxrt_semc_probe(struct platform_device *pdev)
 {
-	/*struct imxrt_sdram_params *params = dev_get_plat(dev);
+    struct device *dev = &pdev->dev;
+    struct imxrt_sdram_params *params = dev->platform_data;
 	int ret;
-	fdt_addr_t addr;
+	void __iomem *addr;
+    struct resource *res;
+    struct clk *clk;
 
-	addr = dev_read_addr(dev);
-	if (addr == FDT_ADDR_T_NONE)
+
+    res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	addr = devm_ioremap_resource(&pdev->dev, res);
+    if (IS_ERR(addr))
 		return -EINVAL;
 
 	params->base = (struct imxrt_semc_regs *)addr;
 
-#ifdef CONFIG_CLK
-	struct clk clk;
-
-	ret = clk_get_by_index(dev, 0, &clk);
-	if (ret < 0)
+    clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(clk))
 		return ret;
 
-	ret = clk_enable(&clk);
+	ret = clk_prepare_enable(clk);
 
 	if (ret) {
 		dev_err(dev, "failed to enable clock\n");
 		return ret;
 	}
-#endif
 	ret = imxrt_sdram_init(dev);
 	if (ret)
 		return ret;
-
-	return 0;*/
+    
     return 0;
 }
 static int imxrt_semc_remove(struct platform_device *pdev){
