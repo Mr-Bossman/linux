@@ -10,43 +10,6 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/io.h>
-#define STAT_TDRE	(1 << 23)
-struct lpuart_fsl_reg32 {
-	u32 verid;
-	u32 param;
-	u32 global;
-	u32 pincfg;
-	u32 baud;
-	u32 stat;
-	u32 ctrl;
-	u32 data;
-	u32 match;
-	u32 modir;
-	u32 fifo;
-	u32 water;
-};
-static void printc(const char c){
-	u32 stat;
-	struct lpuart_fsl_reg32 *base = 0x40184000;
-	while (true) {
-		stat = readl(&base->stat);
-		if ((stat & STAT_TDRE))
-			break;
-	}
-	writel(c, &base->data);
-}
-
-extern void printascii(const char *);
-static void printasciin(const char *s){
-	while(*s){
-		printc(*s);
-		if(*s == '\n'){
-			printc('\r');
-		}
-		s++;
-	}
-}
-
 static void early_write(const char *s, unsigned n)
 {
 	char buf[128];
@@ -56,7 +19,7 @@ static void early_write(const char *s, unsigned n)
 		buf[l] = 0;
 		s += l;
 		n -= l;
-		printasciin(buf);
+		printascii(buf);
 	}
 }
 
