@@ -33,6 +33,16 @@
 		};
 	};
 
+	cpus {
+		#address-cells = <0x01>;
+		#size-cells = <0x00>;
+
+		cpu@0 {
+			compatible = "arm,cortex-m7";
+			device_type = "cpu";
+			reg = <0x00>;
+		};
+	};
 	soc {
 
 
@@ -49,7 +59,7 @@
 		lpuart1: serial@40184000 {
 			compatible = "fsl,imxrt-lpuart","fsl,imx8mm-uart", "fsl,imx6q-uart";
 			reg = <0x40184000 0x4000>;
-			interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <20>;
 			clocks = <&clks IMXRT1060_CLK_LPUART1>;
 			clock-names = "ipg";
 			status = "disabled";
@@ -65,16 +75,16 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-ccm";
 			reg = <0x400fc000 0x4000>;
-			interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <95>,
+				     <96>;
 			#clock-cells = <1>;
 		};
 
 		usdhc1: usdhc@402c0000 {
 			u-boot,dm-spl;
-			compatible = "fsl,imxrt-usdhc";
+			compatible = "fsl,imxrt-usdhc","imx7ulp-usdhc";
 			reg = <0x402c0000 0x10000>;
-			interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <110>;
 			clocks = <&clks IMXRT1060_CLK_USDHC1>;
 			clock-names = "per";
 			bus-width = <4>;
@@ -87,8 +97,8 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-gpio", "fsl,imx35-gpio";
 			reg = <0x401b8000 0x4000>;
-			interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>,
-				     <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <80>,
+				     <81>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			interrupt-controller;
@@ -99,8 +109,8 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-gpio", "fsl,imx35-gpio";
 			reg = <0x401bc000 0x4000>;
-			interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <82>,
+				<83>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			interrupt-controller;
@@ -111,8 +121,8 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-gpio", "fsl,imx35-gpio";
 			reg = <0x401c0000 0x4000>;
-			interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <84>,
+				<85>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			interrupt-controller;
@@ -123,8 +133,8 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-gpio", "fsl,imx35-gpio";
 			reg = <0x401c4000 0x4000>;
-			interrupts = <GIC_SPI 86 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <86>,
+					<87>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			interrupt-controller;
@@ -135,8 +145,8 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-gpio", "fsl,imx35-gpio";
 			reg = <0x400c0000 0x4000>;
-			interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <88>,
+				<89>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			interrupt-controller;
@@ -146,7 +156,7 @@
 		lcdif: lcdif@402b8000 {
 		    compatible = "fsl,imxrt-lcdif";
 		    reg = <0x402b8000 0x10000>;
-		    interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>;
+		    interrupts = <42>;
 		    clocks = <&clks IMXRT1060_CLK_LCDIF>;
 		    clock-names = "per";
 		    status = "disabled";
@@ -154,7 +164,7 @@
 		gpt: timer@401ec000 {
 			compatible = "fsl,imx53-gpt", "fsl,imx31-gpt";
 			reg = <0x401ec000 0x4000>;
-			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <100>;
 			clocks = <&clks IMXRT1060_CLK_DUMMY>;
 			clock-names = "per";
 		};
