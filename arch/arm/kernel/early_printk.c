@@ -10,6 +10,9 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/io.h>
+
+extern void printascii(const char *);
+
 static void early_write(const char *s, unsigned n)
 {
 	char buf[128];

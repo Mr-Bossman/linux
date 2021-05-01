@@ -225,6 +225,14 @@ config STM32_FMC2_EBI
 	  devices (like SRAM, ethernet adapters, FPGAs, LCD displays, ...) on
 	  SOCs containing the FMC2 External Bus Interface.
 
+config IMXRT_SDRAM
+	bool "Enable i.MXRT SDRAM support"
+	depends on SOC_IMXRT
+	help
+	  i.MXRT family devices support smart external memory controller(SEMC)
+	  to support external memories like sdram, psram & nand.
+	  This driver is for the sdram memory interface with the SEMC.
+
 source "drivers/memory/samsung/Kconfig"
 source "drivers/memory/tegra/Kconfig"
 
