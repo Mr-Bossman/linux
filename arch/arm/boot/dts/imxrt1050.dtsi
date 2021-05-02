@@ -79,7 +79,33 @@
 				     <96>;
 			#clock-cells = <1>;
 		};
-
+		edma1: dma-controller@400E8000 {
+			#dma-cells = <2>;
+			compatible = "fsl,imx7ulp-edma";
+			reg = <0x400E8000 0x4000>,
+				<0x400EC00 0x4000>;
+			dma-channels = <32>;
+			interrupts = <GIC_SPI 0>,
+				<1>,
+				<2>,
+				<3>,
+				<4>,
+				<5>,
+				<6>,
+				<7>,
+				<8>,
+				<9>,
+				<10>,
+				<11>,
+				<12>,
+				<13>,
+				<14>,
+				<15>,
+				<16>;
+			clock-names = "dma", "dmamux0";
+			clocks = <&clks IMXRT1050_CLK_DUMMY>,
+				 <&clks IMXRT1050_CLK_DUMMY>;
+		};
 		usdhc1: mmc@402c0000 {
 			compatible = "imx7ulp-usdhc", "fsl,imx7ulp-usdhc";
 			reg = <0x402c0000 0x4000>;
