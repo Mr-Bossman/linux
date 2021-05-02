@@ -84,7 +84,9 @@
 			compatible = "imx7ulp-usdhc", "fsl,imx7ulp-usdhc";
 			reg = <0x402c0000 0x4000>;
 			interrupts = <110>;
-			clocks = <&clks IMXRT1050_CLK_USDHC1>;
+			clocks = <&clks IMXRT1050_CLK_DUMMY>,
+				<&clks IMXRT1050_CLK_DUMMY>,
+				<&clks IMXRT1050_CLK_DUMMY>;
 			clock-names = "ipg", "ahb", "per";
 			bus-width = <4>;
 			fsl,tuning-start-tap = <20>;
