@@ -6,7 +6,7 @@
 
 #include "armv7-m.dtsi"
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/clock/imxrt1060-clock.h>
+#include <dt-bindings/clock/imxrt1050-clock.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/memory/imxrt-sdram.h>
 
@@ -50,7 +50,7 @@
 			u-boot,dm-spl;
 			compatible = "fsl,imxrt-semc";
 			reg = <0x402f0000 0x4000>;
-			clocks = <&clks IMXRT1060_CLK_SEMC>;
+			clocks = <&clks IMXRT1050_CLK_SEMC>;
 			pinctrl-0 = <&pinctrl_semc>;
 			pinctrl-names = "default";
 			status = "okay";
@@ -60,7 +60,7 @@
 			compatible = "fsl,imxrt-lpuart","fsl,imx8mm-uart", "fsl,imx6q-uart";
 			reg = <0x40184000 0x4000>;
 			interrupts = <20>;
-			clocks = <&clks IMXRT1060_CLK_LPUART1>;
+			clocks = <&clks IMXRT1050_CLK_LPUART1>;
 			clock-names = "ipg";
 			status = "disabled";
 		};
@@ -80,13 +80,12 @@
 			#clock-cells = <1>;
 		};
 
-		usdhc1: usdhc@402c0000 {
-			u-boot,dm-spl;
-			compatible = "fsl,imxrt-usdhc","imx7ulp-usdhc";
-			reg = <0x402c0000 0x10000>;
+		usdhc1: mmc@402c0000 {
+			compatible = "imx7ulp-usdhc", "fsl,imx7ulp-usdhc";
+			reg = <0x402c0000 0x4000>;
 			interrupts = <110>;
-			clocks = <&clks IMXRT1060_CLK_USDHC1>;
-			clock-names = "per";
+			clocks = <&clks IMXRT1050_CLK_USDHC1>;
+			clock-names = "ipg", "ahb", "per";
 			bus-width = <4>;
 			fsl,tuning-start-tap = <20>;
 			fsl,tuning-step= <2>;
@@ -157,7 +156,7 @@
 		    compatible = "fsl,imxrt-lcdif";
 		    reg = <0x402b8000 0x10000>;
 		    interrupts = <42>;
-		    clocks = <&clks IMXRT1060_CLK_LCDIF>;
+		    clocks = <&clks IMXRT1050_CLK_LCDIF>;
 		    clock-names = "per";
 		    status = "disabled";
 		};
@@ -165,7 +164,7 @@
 			compatible = "fsl,imx53-gpt", "fsl,imx31-gpt";
 			reg = <0x401ec000 0x4000>;
 			interrupts = <100>;
-			clocks = <&clks IMXRT1060_CLK_DUMMY>;
+			clocks = <&clks IMXRT1050_CLK_DUMMY>;
 			clock-names = "per";
 		};
 	};
