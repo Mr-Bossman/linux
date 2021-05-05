@@ -83,9 +83,9 @@
 			#dma-cells = <2>;
 			compatible = "fsl,imx7ulp-edma";
 			reg = <0x400E8000 0x4000>,
-				<0x400EC00 0x4000>;
+				<0x400EC000 0x4000>;
 			dma-channels = <32>;
-			interrupts = <GIC_SPI 0>,
+			interrupts = <0>,
 				<1>,
 				<2>,
 				<3>,
@@ -103,11 +103,11 @@
 				<15>,
 				<16>;
 			clock-names = "dma", "dmamux0";
-			clocks = <&clks IMXRT1050_CLK_DUMMY>,
-				 <&clks IMXRT1050_CLK_DUMMY>;
+			clocks = <&clks IMXRT1050_CLK_DMA>,
+				 <&clks IMXRT1050_CLK_DMA_MUX>;
 		};
 		usdhc1: mmc@402c0000 {
-			compatible = "imx7ulp-usdhc", "fsl,imx7ulp-usdhc";
+			compatible ="fsl,imxrt-usdhc";
 			reg = <0x402c0000 0x4000>;
 			interrupts = <110>;
 			clocks = <&clks IMXRT1050_CLK_DUMMY>,
@@ -115,6 +115,9 @@
 				<&clks IMXRT1050_CLK_DUMMY>;
 			clock-names = "ipg", "ahb", "per";
 			bus-width = <4>;
+			fsl,wp-controller;
+			no-1-8-v;
+			max-frequency = <1000000>;
 			fsl,tuning-start-tap = <20>;
 			fsl,tuning-step= <2>;
 			status = "disabled";

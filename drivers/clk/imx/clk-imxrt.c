@@ -81,7 +81,7 @@ static void __init imxrt_clocks_common_init(void __iomem *base)
 	clk[IMXRT1050_CLK_PLL3_PFD3_454_74M] = imx_clk_pfd("pll3_pfd3_454_74m", "pll3_usb_otg", base + 0xf0,3);
 }
 static void __init imxrt_clocks_init(struct device_node *np)
-{static struct clk_onecell_data clk_data;
+{
 
  	void __iomem *ccm_base;
  	void __iomem *pll_base;
@@ -119,6 +119,11 @@ static void __init imxrt_clocks_init(struct device_node *np)
 	clk[IMXRT1050_CLK_LPUART1] = imx_clk_gate2("lpuart1", "lpuart_podf", ccm_base + 0x7c, 24);
 	clk[IMXRT1050_CLK_SEMC] = imx_clk_gate2("semc", "semc_podf", ccm_base + 0x74, 4);
 	clk[IMXRT1050_CLK_LCDIF] = imx_clk_gate2("lcdif", "lcdif_podf", ccm_base + 0x74, 10);
+	clk[IMXRT1050_CLK_DMA] = imx_clk_gate("dma", "ipg", ccm_base + 0x7C, 6);
+	clk[IMXRT1050_CLK_DMA_MUX] = imx_clk_gate("dmamux0", "ipg", ccm_base + 0x7C, 7);
+
+
+
 	imx_check_clocks(clk, ARRAY_SIZE(clk));
 
 	clk_data.clks = clk;
