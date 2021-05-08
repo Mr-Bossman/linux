@@ -110,14 +110,14 @@
 			compatible ="fsl,imxrt-usdhc";
 			reg = <0x402c0000 0x4000>;
 			interrupts = <110>;
-			clocks = <&clks IMXRT1050_CLK_DUMMY>,
-				<&clks IMXRT1050_CLK_DUMMY>,
-				<&clks IMXRT1050_CLK_DUMMY>;
+			clocks = <&clks IMXRT1050_CLK_IPG_PDOF>,
+				<&clks IMXRT1050_CLK_AHB_PODF>,
+				<&clks IMXRT1050_CLK_USDHC1>;
 			clock-names = "ipg", "ahb", "per";
 			bus-width = <4>;
 			fsl,wp-controller;
 			no-1-8-v;
-			max-frequency = <1000000>;
+			max-frequency = <40000>;
 			fsl,tuning-start-tap = <20>;
 			fsl,tuning-step= <2>;
 			status = "disabled";
