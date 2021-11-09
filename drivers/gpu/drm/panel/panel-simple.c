@@ -2552,15 +2552,15 @@ static const struct panel_desc lemaker_bl035_rgb_002 = {
 };
 
 static const struct drm_display_mode lg_lb070wv8_mode = {
-	.clock = 33246,
-	.hdisplay = 800,
-	.hsync_start = 800 + 88,
-	.hsync_end = 800 + 88 + 80,
-	.htotal = 800 + 88 + 80 + 88,
+	.clock = 25175,
+	.hdisplay = 640,
+	.hsync_start = 640 + 16,
+	.hsync_end = 640 + 16 + 96,
+	.htotal = 640 + 16 + 96 + 48,
 	.vdisplay = 480,
 	.vsync_start = 480 + 10,
-	.vsync_end = 480 + 10 + 25,
-	.vtotal = 480 + 10 + 25 + 10,
+	.vsync_end = 480 + 10 + 2,
+	.vtotal = 480 + 10 + 2 + 33,
 };
 
 static const struct panel_desc lg_lb070wv8 = {
