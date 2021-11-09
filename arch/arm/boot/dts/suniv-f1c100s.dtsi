@@ -37,7 +37,7 @@
 			device_type = "cpu";
 		};
 	};
-	
+
 	de: display-engine {
 		compatible = "allwinner,suniv-f1c100s-display-engine";
 		allwinner,pipelines = <&fe0>;
