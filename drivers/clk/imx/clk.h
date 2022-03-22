@@ -242,6 +242,8 @@ struct clk_hw *imx_clk_hw_sscg_pll(const char *name,
 
 enum imx_pllv3_type {
 	IMX_PLLV3_GENERIC,
+	IMX_PLLV3_GENERICV2,
+	IMX_PLLV3_SYSV2,
 	IMX_PLLV3_SYS,
 	IMX_PLLV3_USB,
 	IMX_PLLV3_USB_VF610,
@@ -252,6 +254,8 @@ enum imx_pllv3_type {
 	IMX_PLLV3_DDR_IMX7,
 	IMX_PLLV3_AV_IMX7,
 };
+
+void imx_clk_hw_pll3_powerbit(struct clk_hw *hw, u8 shift);
 
 struct clk_hw *imx_clk_hw_pllv3(enum imx_pllv3_type type, const char *name,
 		const char *parent_name, void __iomem *base, u32 div_mask);
