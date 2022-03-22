@@ -6,6 +6,8 @@
 #include <linux/spinlock.h>
 #include <linux/clk-provider.h>
 
+#define BM_PLL_POWER		(0x1 << 12)
+
 extern spinlock_t imx_ccm_lock;
 extern bool mcore_booted;
 
@@ -101,6 +103,11 @@ extern struct imx_fracn_gppll_clk imx_fracn_gppll;
 				cgr_val, cgr_mask, clk_gate_flags, lock, share_count) \
 	to_clk(clk_hw_register_gate2(dev, name, parent_name, flags, reg, bit_idx, \
 				cgr_val, cgr_mask, clk_gate_flags, lock, share_count))
+
+#define imx_clk_hw_pllv3(name, parent_names, num_parents, parent,       \
+				bypass1, bypass2, base, flags)          \
+	__imx_clk_hw_pllv3(name, parent_names, num_parents, parent,     \
+				bypass1, bypass2, base, flags, BM_PLL_POWER)
 
 #define imx_clk_pllv3(type, name, parent_name, base, div_mask) \
 	to_clk(imx_clk_hw_pllv3(type, name, parent_name, base, div_mask))
@@ -242,6 +249,8 @@ struct clk_hw *imx_clk_hw_sscg_pll(const char *name,
 
 enum imx_pllv3_type {
 	IMX_PLLV3_GENERIC,
+	IMX_PLLV3_GENERICV2,
+	IMX_PLLV3_SYSV2,
 	IMX_PLLV3_SYS,
 	IMX_PLLV3_USB,
 	IMX_PLLV3_USB_VF610,
@@ -252,6 +261,8 @@ enum imx_pllv3_type {
 	IMX_PLLV3_DDR_IMX7,
 	IMX_PLLV3_AV_IMX7,
 };
+
+void imx_clk_hw_pll3_powerbit(struct clk_hw *hw, u8 shift);
 
 struct clk_hw *imx_clk_hw_pllv3(enum imx_pllv3_type type, const char *name,
 		const char *parent_name, void __iomem *base, u32 div_mask);
