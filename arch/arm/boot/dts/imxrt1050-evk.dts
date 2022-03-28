@@ -37,9 +37,9 @@
 		#size-cells = <1>;
 		ranges;
 
-		region0: mmio@0x81f00000 {
+		linux,cma {
 			compatible = "shared-dma-pool";
-			reg = <0x81f00000 0x100000>;
+			size = <0x40000>;
 			no-map;
 			linux,dma-default;
 		};
@@ -48,7 +48,7 @@
 
 &fec {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_enet &pinctrl_enet_mdio>;
+	pinctrl-0 = <&pinctrl_enet>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy0>;
 	status = "okay";
@@ -56,13 +56,12 @@
 	mdio {
 		#address-cells = <1>;
 		#size-cells = <0>;
-
 		ethphy0: ethernet-phy@0 {
-			compatible = "ethernet-phy-id0022.1560", "ethernet-phy-ieee802.3-c22";
-			reg = <2>;
-			micrel,led-mode = <1>;
-			clocks = <&clks IMXRT1050_CLK_ENET_REF>;
-			clock-names = "rmii-ref";
+			reg = <0>;
+			interrupts-extended = <&gpio1 10 IRQ_TYPE_LEVEL_LOW>;
+			reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+			reset-assert-us = <10000>;
+			reset-deassert-us = <300>;
 		};
 	};
 };
@@ -88,11 +87,6 @@
 			MXRT1050_IOMUXC_GPIO_B1_09_ENET_TX_EN		0xb0e9
 			MXRT1050_IOMUXC_GPIO_AD_B0_09_GPIO1_IO09	0xb069
 			MXRT1050_IOMUXC_GPIO_AD_B0_10_GPIO1_IO10	0xb069
-		>;
-	};
-
-	pinctrl_enet_mdio: enetmdiogrp {
-		fsl,pins = <
 			MXRT1050_IOMUXC_GPIO_EMC_40_ENET_MDC		0xb0e9
 			MXRT1050_IOMUXC_GPIO_EMC_41_ENET_MDIO		0xb829
 		>;
@@ -128,3 +122,4 @@
 	cd-gpios = <&gpio2 28 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
+

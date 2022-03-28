@@ -99,16 +99,26 @@
 			status = "disabled";
 		};
 
+		gpr: iomuxc-gpr@400ac000 {
+			compatible = "fsl,imxrt1050-iomuxc-gpr",
+					"fsl,imxrt-iomuxc-gpr", "syscon";
+			reg = <0x400ac000 0x4000>;
+		};
+
 		fec: ethernet@402d8000 {
 				compatible = "fsl,imxrt105x-fec";
 				reg = <0x402d8000 0x1000>;
+				interrupt-names = "int0", "pps";
+				interrupts = <114>,
+					     <115>;
 				fsl,num-tx-queues=<1>;
 				fsl,num-rx-queues=<1>;
-				interrupts = <114>;
 				clocks = <&clks IMXRT1050_CLK_ENET>,
 					<&clks IMXRT1050_CLK_ENET>,
-					<&clks IMXRT1050_CLK_ENET>;
-				clock-names = "ipg", "ahb", "ptp";
+					<&clks IMXRT1050_CLK_ENET_REF>,
+					<&clks IMXRT1050_CLK_ENET_REF>;
+				clock-names = "ipg", "ahb", "ptp","enet_clk_ref";
+				fsl,stop-mode = <&gpr 0x10 4>;
 				status = "disabled";
 		};
 
