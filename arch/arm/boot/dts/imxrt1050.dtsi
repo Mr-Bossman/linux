@@ -29,7 +29,7 @@
 
 	soc {
 		lpuart1: serial@40184000 {
-			compatible = "fsl,imxrt1050-lpuart", "fsl,imx7ulp-lpuart";
+			compatible = "fsl,imxrt1050-lpuart";
 			reg = <0x40184000 0x4000>;
 			interrupts = <20>;
 			clocks = <&clks IMXRT1050_CLK_LPUART1>;
@@ -40,7 +40,6 @@
 		iomuxc: pinctrl@401f8000 {
 			compatible = "fsl,imxrt1050-iomuxc";
 			reg = <0x401f8000 0x4000>;
-			fsl,mux_mask = <0x7>;
 		};
 
 		anatop: anatop@400d8000 {
@@ -83,7 +82,7 @@
 		};
 
 		usdhc1: mmc@402c0000 {
-			compatible ="fsl,imxrt1050-usdhc", "fsl,imx6sl-usdhc";
+			compatible = "fsl,imxrt1050-usdhc";
 			reg = <0x402c0000 0x4000>;
 			interrupts = <110>;
 			clocks = <&clks IMXRT1050_CLK_IPG_PDOF>,
@@ -150,11 +149,11 @@
 		};
 
 		gpt: timer@401ec000 {
-			compatible = "fsl,imxrt1050-gpt", "fsl,imx6dl-gpt", "fsl,imx6sl-gpt";
+			compatible = "fsl,imxrt1050-gpt", "fsl,imx6dl-gpt";
 			reg = <0x401ec000 0x4000>;
 			interrupts = <100>;
-			clocks = <&osc3M>;
-			clock-names = "per";
+			clocks = <&osc3M>, <&osc3M>;
+			clock-names = "ipg", "per";
 		};
 	};
 };
