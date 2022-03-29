@@ -99,6 +99,19 @@
 			status = "disabled";
 		};
 
+		fec: ethernet@402d8000 {
+				compatible = "fsl,imxrt105x-fec";
+				reg = <0x402d8000 0x1000>;
+				fsl,num-tx-queues=<1>;
+				fsl,num-rx-queues=<1>;
+				interrupts = <114>;
+				clocks = <&clks IMXRT1050_CLK_ENET>,
+					<&clks IMXRT1050_CLK_ENET>,
+					<&clks IMXRT1050_CLK_ENET>;
+				clock-names = "ipg", "ahb", "ptp";
+				status = "disabled";
+		};
+
 		gpio1: gpio@401b8000 {
 			compatible = "fsl,imxrt1050-gpio", "fsl,imx35-gpio";
 			reg = <0x401b8000 0x4000>;

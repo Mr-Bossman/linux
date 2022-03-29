@@ -24,11 +24,46 @@
 		gpio4 = &gpio5;
 		mmc0 = &usdhc1;
 		serial0 = &lpuart1;
+		ethernet0 = &fec;
 	};
 
 	memory@80000000 {
 		device_type = "memory";
 		reg = <0x80000000 0x2000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		region0: mmio@0x81f00000 {
+			compatible = "shared-dma-pool";
+			reg = <0x81f00000 0x100000>;
+			no-map;
+			linux,dma-default;
+		};
+	};
+};
+
+&fec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enet &pinctrl_enet_mdio>;
+	phy-mode = "rmii";
+	phy-handle = <&ethphy0>;
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy0: ethernet-phy@0 {
+			compatible = "ethernet-phy-id0022.1560", "ethernet-phy-ieee802.3-c22";
+			reg = <2>;
+			micrel,led-mode = <1>;
+			clocks = <&clks IMXRT1050_CLK_ENET_REF>;
+			clock-names = "rmii-ref";
+		};
 	};
 };
 
@@ -40,6 +75,29 @@
 
 &iomuxc {
 	pinctrl-names = "default";
+
+	pinctrl_enet: enetgrp {
+		fsl,pins = <
+			MXRT1050_IOMUXC_GPIO_B1_10_ENET_TX_CLK		0xf1
+			MXRT1050_IOMUXC_GPIO_B1_04_ENET_RX_DATA00	0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_05_ENET_RX_DATA01	0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_06_ENET_RX_EN		0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_11_ENET_RX_ER		0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_07_ENET_TX_DATA00	0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_08_ENET_TX_DATA01	0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_09_ENET_TX_EN		0xb0e9
+			MXRT1050_IOMUXC_GPIO_AD_B0_09_GPIO1_IO09	0xb069
+			MXRT1050_IOMUXC_GPIO_AD_B0_10_GPIO1_IO10	0xb069
+		>;
+	};
+
+	pinctrl_enet_mdio: enetmdiogrp {
+		fsl,pins = <
+			MXRT1050_IOMUXC_GPIO_EMC_40_ENET_MDC		0xb0e9
+			MXRT1050_IOMUXC_GPIO_EMC_41_ENET_MDIO		0xb829
+		>;
+	};
+
 	pinctrl_lpuart1: lpuart1grp {
 		fsl,pins = <
 			MXRT1050_IOMUXC_GPIO_AD_B0_12_LPUART1_TXD	0xf1

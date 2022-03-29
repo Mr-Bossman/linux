@@ -19,6 +19,7 @@ static const char * const pll1_bypass_sels[] = {"pll1_arm", "pll1_arm_ref_sel", 
 static const char * const pll2_bypass_sels[] = {"pll2_sys", "pll2_sys_ref_sel", };
 static const char * const pll3_bypass_sels[] = {"pll3_usb_otg", "pll3_usb_otg_ref_sel", };
 static const char * const pll5_bypass_sels[] = {"pll5_video", "pll5_video_ref_sel", };
+static const char * const pll6_bypass_sels[] = {"pll6_enet", "pll6_enet_ref_sel", };
 static const char *const pre_periph_sels[] = {
 	"pll2_sys", "pll2_pfd2_396m", "pll2_pfd0_352m", "arm_podf", };
 static const char *const periph_sels[] = { "pre_periph_sel", "todo", };
@@ -32,6 +33,14 @@ static const char *const semc_sels[] = { "periph_sel", "semc_alt_sel", };
 
 static struct clk_hw **hws;
 static struct clk_hw_onecell_data *clk_hw_data;
+
+static const struct clk_div_table clk_enet_ref_table[] = {
+	{ .val = 0, .div = 20, },
+	{ .val = 1, .div = 10, },
+	{ .val = 2, .div = 5, },
+	{ .val = 3, .div = 4, },
+	{ }
+};
 
 static int imxrt1050_clocks_probe(struct platform_device *pdev)
 {
@@ -69,6 +78,8 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 		pll_base + 0x10, 14, 2, pll_ref_sels, ARRAY_SIZE(pll_ref_sels));
 	hws[IMXRT1050_CLK_PLL5_REF_SEL] = imx_clk_hw_mux("pll5_video_ref_sel",
 		pll_base + 0xa0, 14, 2, pll_ref_sels, ARRAY_SIZE(pll_ref_sels));
+	hws[IMXRT1050_CLK_PLL6_REF_SEL] = imx_clk_hw_mux("pll6_enet_ref_sel",
+		pll_base + 0xe0, 14, 1, pll_ref_sels, ARRAY_SIZE(pll_ref_sels));
 
 	hws[IMXRT1050_CLK_PLL1_ARM] = imx_clk_hw_pllv3(IMX_PLLV3_SYS, "pll1_arm",
 		"pll1_arm_ref_sel", pll_base + 0x0, 0x7f);
@@ -78,6 +89,8 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 		"pll3_usb_otg_ref_sel", pll_base + 0x10, 0x1);
 	hws[IMXRT1050_CLK_PLL5_VIDEO] = imx_clk_hw_pllv3(IMX_PLLV3_AV, "pll5_video",
 		"pll5_video_ref_sel", pll_base + 0xa0, 0x7f);
+	hws[IMXRT1050_CLK_PLL6_ENET] = imx_clk_hw_pllv3(IMX_PLLV3_ENET, "pll6_enet",
+		"pll6_enet_ref_sel", pll_base + 0xe0, 0x3);
 
 	/* PLL bypass out */
 	hws[IMXRT1050_CLK_PLL1_BYPASS] = imx_clk_hw_mux_flags("pll1_bypass", pll_base + 0x0, 16, 1,
@@ -88,11 +101,17 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 		pll3_bypass_sels, ARRAY_SIZE(pll3_bypass_sels), CLK_SET_RATE_PARENT);
 	hws[IMXRT1050_CLK_PLL5_BYPASS] = imx_clk_hw_mux_flags("pll5_bypass", pll_base + 0xa0, 16, 1,
 		pll5_bypass_sels, ARRAY_SIZE(pll5_bypass_sels), CLK_SET_RATE_PARENT);
+	hws[IMXRT1050_CLK_PLL6_BYPASS] = imx_clk_hw_mux_flags("pll6_bypass", pll_base + 0xe0, 16, 1,
+		pll6_bypass_sels, ARRAY_SIZE(pll6_bypass_sels), CLK_SET_RATE_PARENT);
 
 	hws[IMXRT1050_CLK_VIDEO_POST_DIV_SEL] = imx_clk_hw_divider("video_post_div_sel",
 		"pll5_video", pll_base + 0xa0, 19, 2);
 	hws[IMXRT1050_CLK_VIDEO_DIV] = imx_clk_hw_divider("video_div",
 		"video_post_div_sel", pll_base + 0x170, 30, 2);
+
+	hws[IMXRT1050_CLK_ENET_REF] = clk_hw_register_divider_table(NULL, "enet_ref", "pll6_enet", 0,
+			pll_base + 0xe0, 0, 2, 0, clk_enet_ref_table,
+			&imx_ccm_lock);
 
 	hws[IMXRT1050_CLK_PLL3_80M] = imx_clk_hw_fixed_factor("pll3_80m",  "pll3_usb_otg", 1, 6);
 
@@ -143,6 +162,9 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 	hws[IMXRT1050_CLK_LCDIF_APB] = imx_clk_hw_gate2("lcdif", "lcdif_podf", ccm_base + 0x74, 10);
 	hws[IMXRT1050_CLK_DMA] = imx_clk_hw_gate("dma", "ipg", ccm_base + 0x7C, 6);
 	hws[IMXRT1050_CLK_DMA_MUX] = imx_clk_hw_gate("dmamux0", "ipg", ccm_base + 0x7C, 7);
+
+	hws[IMXRT1050_CLK_ENET] = imx_clk_hw_gate2("enet", "ipg", ccm_base + 0x6c, 10);
+
 	imx_check_clk_hws(hws, IMXRT1050_CLK_END);
 
 	ret = of_clk_add_hw_provider(np, of_clk_hw_onecell_get, clk_hw_data);
