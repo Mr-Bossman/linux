@@ -52,17 +52,18 @@
 	phy-mode = "rmii";
 	phy-handle = <&ethphy0>;
 	status = "okay";
-	phy-reset-gpios = <&gpio2 22 GPIO_ACTIVE_LOW>;
 
 	mdio {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		ethphy0: ethernet-phy@0 {
 			reg = <0>;
+			micrel,led-mode = <1>;
 			interrupts-extended = <&gpio1 10 IRQ_TYPE_LEVEL_LOW>;
 			reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
 			reset-assert-us = <10000>;
 			reset-deassert-us = <300>;
+			rmii-ref = <&clks IMXRT1050_CLK_ENET_REF>;
 		};
 	};
 };
@@ -81,13 +82,13 @@
 			MXRT1050_IOMUXC_GPIO_B1_10_ENET_REF_CLK		(IMX_PAD_SION | 0xb0e9)
 			MXRT1050_IOMUXC_GPIO_B1_04_ENET_RX_DATA00	0xb0e9
 			MXRT1050_IOMUXC_GPIO_B1_05_ENET_RX_DATA01	0xb0e9
-			MXRT1050_IOMUXC_GPIO_B1_06_GPIO2_IO22		0xb0e9
+			MXRT1050_IOMUXC_GPIO_B1_06_ENET_RX_EN		0xb0e9
 			MXRT1050_IOMUXC_GPIO_B1_11_ENET_RX_ER		0xb0e9
 			MXRT1050_IOMUXC_GPIO_B1_07_ENET_TX_DATA00	0xb0e9
 			MXRT1050_IOMUXC_GPIO_B1_08_ENET_TX_DATA01	0xb0e9
 			MXRT1050_IOMUXC_GPIO_B1_09_ENET_TX_EN		0xb0e9
-			MXRT1050_IOMUXC_GPIO_AD_B0_09_GPIO1_IO09	0xb069
-			MXRT1050_IOMUXC_GPIO_AD_B0_10_GPIO1_IO10	0xb069
+			MXRT1050_IOMUXC_GPIO_AD_B0_09_GPIO1_IO09	0x00880
+			MXRT1050_IOMUXC_GPIO_AD_B0_10_GPIO1_IO10	0x00880
 			MXRT1050_IOMUXC_GPIO_EMC_40_ENET_MDC		0xb0e9
 			MXRT1050_IOMUXC_GPIO_EMC_41_ENET_MDIO		0xb829
 		>;

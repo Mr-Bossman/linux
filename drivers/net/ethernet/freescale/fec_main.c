@@ -156,7 +156,7 @@ static const struct fec_devinfo fec_imx8qm_info = {
 };
 
 static const struct fec_devinfo fec_imxrt1050x_info = {
-	.quirks = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_RACC,
+	.quirks = FEC_QUIRK_ENET_MAC | FEC_QUIRK_HAS_RACC | FEC_QUIRK_CLEAR_SETUP_MII | FEC_QUIRK_HAS_COALESCE,
 };
 
 static struct platform_device_id fec_devtype[] = {

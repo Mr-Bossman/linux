@@ -108,7 +108,7 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 	hws[IMXRT1050_CLK_VIDEO_DIV] = imx_clk_hw_divider("video_div",
 		"video_post_div_sel", pll_base + 0x170, 30, 2);
 	writel(0x203001, pll_base + 0xe0); // set bypass
-	writel(0x20000,0x400AC004); //  (IOMUXC_GPR_GPR1)
+	writel(0x20000,(void*)0x400AC004); //  (IOMUXC_GPR_GPR1)
 
 	hws[IMXRT1050_CLK_PLL6_ENET_PRE1] = imx_clk_hw_gate("pll6_enet_pre1", "pll6_enet_pre", pll_base + 0xe0, 21);
 	hws[IMXRT1050_CLK_PLL6_ENET] = imx_clk_hw_gate("pll6_enet", "pll6_enet_pre1", pll_base + 0xe0, 13);

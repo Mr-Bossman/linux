@@ -1780,9 +1780,14 @@ static struct phy_driver ksphy_driver[] = {
 	.phy_id_mask	= MICREL_PHY_ID_MASK,
 	.name		= "Micrel KSZ8041RNLI",
 	/* PHY_BASIC_FEATURES */
-	.driver_data	= &ksz8041_type,
+	.flags		= PHY_POLL_CABLE_TEST,
+	/* PHY_BASIC_FEATURES */
+	.driver_data	= &ksz8081_type,
 	.probe		= kszphy_probe,
-	.config_init	= kszphy_config_init,
+	.config_init	= ksz8081_config_init,
+	.soft_reset	= genphy_soft_reset,
+	.config_aneg	= ksz8081_config_aneg,
+	.read_status	= ksz8081_read_status,
 	.config_intr	= kszphy_config_intr,
 	.handle_interrupt = kszphy_handle_interrupt,
 	.get_sset_count = kszphy_get_sset_count,
@@ -1790,6 +1795,8 @@ static struct phy_driver ksphy_driver[] = {
 	.get_stats	= kszphy_get_stats,
 	.suspend	= kszphy_suspend,
 	.resume		= kszphy_resume,
+	.cable_test_start	= ksz886x_cable_test_start,
+	.cable_test_get_status	= ksz886x_cable_test_get_status,
 }, {
 	.name		= "Micrel KSZ8051",
 	/* PHY_BASIC_FEATURES */
