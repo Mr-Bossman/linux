@@ -66,7 +66,6 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 	of_node_put(anp);
 	if (WARN_ON(!pll_base))
 		return -ENOMEM;
-
 	/* Anatop clocks */
 	hws[IMXRT1050_CLK_DUMMY] = imx_clk_hw_fixed("dummy", 0UL);
 
@@ -89,7 +88,7 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 		"pll3_usb_otg_ref_sel", pll_base + 0x10, 0x1);
 	hws[IMXRT1050_CLK_PLL5_VIDEO] = imx_clk_hw_pllv3(IMX_PLLV3_AV, "pll5_video",
 		"pll5_video_ref_sel", pll_base + 0xa0, 0x7f);
-	hws[IMXRT1050_CLK_PLL6_ENET] = imx_clk_hw_pllv3(IMX_PLLV3_ENET, "pll6_enet",
+	hws[IMXRT1050_CLK_PLL6_ENET_PRE] = imx_clk_hw_pllv3(IMX_PLLV3_ENET, "pll6_enet_pre",
 		"pll6_enet_ref_sel", pll_base + 0xe0, 0x3);
 
 	/* PLL bypass out */
@@ -108,6 +107,11 @@ static int imxrt1050_clocks_probe(struct platform_device *pdev)
 		"pll5_video", pll_base + 0xa0, 19, 2);
 	hws[IMXRT1050_CLK_VIDEO_DIV] = imx_clk_hw_divider("video_div",
 		"video_post_div_sel", pll_base + 0x170, 30, 2);
+	writel(0x203001, pll_base + 0xe0); // set bypass
+	writel(0x20000,0x400AC004); //  (IOMUXC_GPR_GPR1)
+
+	hws[IMXRT1050_CLK_PLL6_ENET_PRE1] = imx_clk_hw_gate("pll6_enet_pre1", "pll6_enet_pre", pll_base + 0xe0, 21);
+	hws[IMXRT1050_CLK_PLL6_ENET] = imx_clk_hw_gate("pll6_enet", "pll6_enet_pre1", pll_base + 0xe0, 13);
 
 	hws[IMXRT1050_CLK_ENET_REF] = clk_hw_register_divider_table(NULL, "enet_ref", "pll6_enet", 0,
 			pll_base + 0xe0, 0, 2, 0, clk_enet_ref_table,
