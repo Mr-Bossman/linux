@@ -16,7 +16,11 @@ description: |
 
 properties:
   compatible:
-    const: kontron,sl28cpld
+    oneOf:
+      - const: simple-mfd-i2c-generic
+      - items:
+          - const: kontron,sl28cpld
+          - const: simple-mfd-i2c-generic
 
   reg:
     description:
@@ -69,7 +73,7 @@ examples:
         #size-cells = <0>;
 
         sl28cpld@4a {
-            compatible = "kontron,sl28cpld";
+            compatible = "kontron,sl28cpld", "simple-mfd-i2c-generic";
             reg = <0x4a>;
             #address-cells = <1>;
             #size-cells = <0>;
