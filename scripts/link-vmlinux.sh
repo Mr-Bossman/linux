@@ -98,10 +98,11 @@ vmlinux_link()
 		ldflags="${ldflags} ${wl}-Map=${output}.map"
 	fi
 
+	libgcc=$($CC -Xlinker --verbose  2>/dev/null | grep 'libgcc\.a$' | tail -n1)
 	${ld} ${ldflags} -o ${output}					\
 		${wl}--whole-archive ${objs} ${wl}--no-whole-archive	\
 		${wl}--start-group ${libs} ${wl}--end-group		\
-		$@ ${ldlibs}
+		$@ ${ldlibs} ${libgcc}
 }
 
 # generate .BTF typeinfo from DWARF debuginfo

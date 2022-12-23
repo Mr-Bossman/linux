@@ -25,6 +25,50 @@
 #include <asm/ptrace.h>
 #include <asm/thread_info.h>
 
+static inline unsigned long* regs_get_register_p(struct pt_regs *regs,
+					      unsigned int offset)
+{
+	static unsigned long zero = 0;
+	if (offset == 0)
+		return &zero;
+	return &(((unsigned long*)regs)[offset]);
+}
+
+static void do_atomic(struct pt_regs *regs){
+	uint32_t op = *(uint32_t*)regs->epc;
+	uint32_t irmid = (op>>27)&0x1f;
+	unsigned long rs1 = *regs_get_register_p(regs,(op >> 15) & 0x1f);
+	unsigned long rs2 = *regs_get_register_p(regs,(op >> 20) & 0x1f);
+	unsigned long* rsd = regs_get_register_p(regs,(op >> 7) & 0x1f);
+	unsigned long* dst = (unsigned long*)rs1;
+	if((op >> 7) & 0x1f)
+		*rsd = *dst;
+	switch( irmid ){
+		case 0b00010: break; //LR.W
+		case 0b00011: {
+			if((op >> 7) & 0x1f)
+				*rsd = 0;
+			*dst = rs2;
+			break; //SC.W (Lie and always say it's good)
+		}
+		case 0b00001: *dst = rs2; break; //AMOSWAP.W
+		case 0b00000: *dst += rs2; break; //AMOADD.W
+		case 0b00100: *dst ^= rs2; break; //AMOXOR.W
+		case 0b01100: *dst &= rs2; break; //AMOAND.W
+		case 0b01000: *dst |= rs2; break; //AMOOR.W
+		default: break;
+	}
+
+}
+
+static int do_exinsn(struct pt_regs *regs){
+	uint32_t op = *(uint32_t*)regs->epc;
+	switch (op & 0x7f) {
+		case 0b0101111: do_atomic(regs); return 1;
+		default: return 0;
+	}
+}
+
 int show_unhandled_signals = 1;
 
 static DEFINE_SPINLOCK(die_lock);
@@ -86,6 +130,14 @@ static void do_trap_error(struct pt_regs *regs, int signo, int code,
 	if (user_mode(regs)) {
 		do_trap(regs, signo, code, addr);
 	} else {
+		/* If illegal instruction and we can emulate, then
+		 * we need to emulate and skip the instruction.
+		 */
+		if(code == ILL_ILLOPC && do_exinsn(regs)){
+			regs->epc+=4;
+			regs->badaddr+=4;
+			return;
+		}
 		if (!fixup_exception(regs))
 			die(regs, str);
 	}

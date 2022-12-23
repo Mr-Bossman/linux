@@ -313,7 +313,7 @@ restore_all:
 	 * arbitrarily large.
 	 */
 	REG_L  a2, PT_EPC(sp)
-	REG_SC x0, a2, PT_EPC(sp)
+//	REG_SC x0, a2, PT_EPC(sp)
 
 	csrw CSR_STATUS, a0
 	csrw CSR_EPC, a2
