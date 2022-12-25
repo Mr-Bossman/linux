@@ -238,7 +238,7 @@ pmp_done:
 	 * floating point in kernel space
 	 */
 	li t0, SR_FS
-	csrc CSR_STATUS, t0
+	//csrc CSR_STATUS, t0
 
 #ifdef CONFIG_RISCV_BOOT_SPINWAIT
 	li t0, CONFIG_NR_CPUS
