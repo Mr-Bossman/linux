@@ -250,7 +250,7 @@ ret_from_syscall_rejected:
 
 ret_from_exception:
 	REG_L s0, PT_STATUS(sp)
-	csrc CSR_STATUS, SR_IE
+	//csrc CSR_STATUS, SR_IE
 #ifdef CONFIG_TRACE_IRQFLAGS
 	call __trace_hardirqs_off
 #endif

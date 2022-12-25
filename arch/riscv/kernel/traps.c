@@ -24,6 +24,7 @@
 #include <asm/processor.h>
 #include <asm/ptrace.h>
 #include <asm/thread_info.h>
+typedef unsigned long ulong;
 
 static inline unsigned long* regs_get_register_p(struct pt_regs *regs,
 					      unsigned int offset)
@@ -33,14 +34,69 @@ static inline unsigned long* regs_get_register_p(struct pt_regs *regs,
 		return &zero;
 	return &(((unsigned long*)regs)[offset]);
 }
+ulong noinline _csr_read(void){
+	ulong ret;
+	asm volatile ("csrr %0, 0x0" : "=r"(ret):);
+	return ret;
+}
+
+void noinline _write_csr(ulong val){
+	asm volatile ("csrw 0x0, %0" : : "r"(val));
+}
+
+ulong csr_rd(ulong csr){
+	ulong* tmp = ((ulong*)_csr_read)+3;
+	*tmp &= ~(0xfff<<20);
+	*tmp |= (csr<<20);
+	return _csr_read();
+}
+
+
+void csr_wr(ulong csr, ulong val){
+	ulong* tmp = ((ulong*)_write_csr)+3;
+	*tmp &= ~(0xfff<<20);
+	*tmp |= (csr<<20);
+	_write_csr(val);
+}
+
+static noinline void do_csr(struct pt_regs *regs){
+	ulong csrval;
+	ulong op = *(ulong*)regs->epc;
+	ulong csr = (op>>20)&0xfff;
+	ulong microop = (op>>12)&0x7;
+	ulong rs1imm = (op >> 15) & 0x1f;
+	ulong* rsd = regs_get_register_p(regs,(op >> 7) & 0x1f);
+	if(microop == 0)
+		return;
+	/*The microop isnt imm */
+	if(!(microop>>2))
+		rs1imm = *regs_get_register_p(regs,rs1imm);
+	if(csr == 0x300){
+		csrval = regs->status;
+	}
+	else
+		csrval = csr_rd(csr);
+	if((op >> 7) & 0x1f)
+		*rsd = csrval;
+	switch( microop & 0x3){
+		case 0b01: csrval = rs1imm; break; //CSRW
+		case 0b10: csrval |= rs1imm | 0x80; break; //CSRRS
+		case 0b11: csrval &= ~rs1imm; break; //CSRRC
+	}
+	if(csr == 0x300)
+		regs->status=csrval;
+	else
+		csr_wr(csr,csrval);
+
+}
 
 static void do_atomic(struct pt_regs *regs){
-	uint32_t op = *(uint32_t*)regs->epc;
-	uint32_t irmid = (op>>27)&0x1f;
-	unsigned long rs1 = *regs_get_register_p(regs,(op >> 15) & 0x1f);
-	unsigned long rs2 = *regs_get_register_p(regs,(op >> 20) & 0x1f);
-	unsigned long* rsd = regs_get_register_p(regs,(op >> 7) & 0x1f);
-	unsigned long* dst = (unsigned long*)rs1;
+	ulong op = *(uint32_t*)regs->epc;
+	ulong irmid = (op>>27)&0x1f;
+	ulong rs1 = *regs_get_register_p(regs,(op >> 15) & 0x1f);
+	ulong rs2 = *regs_get_register_p(regs,(op >> 20) & 0x1f);
+	ulong* rsd = regs_get_register_p(regs,(op >> 7) & 0x1f);
+	ulong* dst = (ulong*)rs1;
 	if((op >> 7) & 0x1f)
 		*rsd = *dst;
 	switch( irmid ){
@@ -65,6 +121,7 @@ static int do_exinsn(struct pt_regs *regs){
 	uint32_t op = *(uint32_t*)regs->epc;
 	switch (op & 0x7f) {
 		case 0b0101111: do_atomic(regs); return 1;
+		case 0b1110011: do_csr(regs); return 1; //CSRRCI
 		default: return 0;
 	}
 }
