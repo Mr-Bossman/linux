@@ -34,32 +34,49 @@ static inline unsigned long* regs_get_register_p(struct pt_regs *regs,
 		return &zero;
 	return &(((unsigned long*)regs)[offset]);
 }
-ulong noinline _csr_read(void){
-	ulong ret;
-	asm volatile ("csrr %0, 0x0" : "=r"(ret):);
-	return ret;
-}
-
-void noinline _write_csr(ulong val){
-	asm volatile ("csrw 0x0, %0" : : "r"(val));
-}
-
+/* CSR's are mapped to 0x400
+enum{
+	csr_mstatus,
+	csr_cyclel,
+	csr_mscratch,
+	csr_mtvec,
+	csr_mie,
+	csr_mip,
+	csr_mepc,
+	csr_mtval,
+	csr_mcause,
+	csr_mvendorid,
+	csr_misa,
+};
+*/
 ulong csr_rd(ulong csr){
-	ulong* tmp = ((ulong*)_csr_read)+3;
-	*tmp &= ~(0xfff<<20);
-	*tmp |= (csr<<20);
-	return _csr_read();
+	ulong csrno = -1;
+	uint32_t csrnums[18] =  {0x300,0xC00,0x340,0x305,0x304,0x344,0x341,0x343,0x342,0xf11,0x301};
+	for (int i = 0; i < 18; i++)
+		if (csr == csrnums[i]) {
+			csrno = i;
+			break;
+		}
+	if (csrno == -1)
+		return 0;
+	return *(ulong*)(0x400+(csrno*4));
 }
 
 
 void csr_wr(ulong csr, ulong val){
-	ulong* tmp = ((ulong*)_write_csr)+3;
-	*tmp &= ~(0xfff<<20);
-	*tmp |= (csr<<20);
-	_write_csr(val);
+	ulong csrno = -1;
+	uint32_t csrnums[18] =  {0x300,0xC00,0x340,0x305,0x304,0x344,0x341,0x343,0x342,0xf11,0x301};
+	for (int i = 0; i < 18; i++)
+		if (csr == csrnums[i]) {
+			csrno = i;
+			break;
+		}
+	if (csrno == -1)
+		return;
+	*(ulong*)(0x400+(csrno*4)) = val;
 }
 
-static noinline void do_csr(struct pt_regs *regs){
+static void do_csr(struct pt_regs *regs){
 	ulong csrval;
 	ulong op = *(ulong*)regs->epc;
 	ulong csr = (op>>20)&0xfff;
@@ -71,20 +88,19 @@ static noinline void do_csr(struct pt_regs *regs){
 	/*The microop isnt imm */
 	if(!(microop>>2))
 		rs1imm = *regs_get_register_p(regs,rs1imm);
-	if(csr == 0x300){
-		csrval = regs->status;
-	}
+	if(csr == 0x300)
+		csrval = regs->status | ((regs->status >> 4)&0x8);
 	else
 		csrval = csr_rd(csr);
 	if((op >> 7) & 0x1f)
 		*rsd = csrval;
 	switch( microop & 0x3){
 		case 0b01: csrval = rs1imm; break; //CSRW
-		case 0b10: csrval |= rs1imm | 0x80; break; //CSRRS
+		case 0b10: csrval |= rs1imm; break; //CSRRS
 		case 0b11: csrval &= ~rs1imm; break; //CSRRC
 	}
 	if(csr == 0x300)
-		regs->status=csrval;
+		regs->status = csrval;
 	else
 		csr_wr(csr,csrval);
 

@@ -176,13 +176,13 @@ secondary_start_sbi:
 setup_trap_vector:
 	/* Set trap vector to exception handler */
 	la a0, handle_exception
-	csrw CSR_TVEC, a0
+	sw a0,0x40c(zero)
 
 	/*
 	 * Set sup0 scratch register to 0, indicating to exception vector that
 	 * we are presently executing in kernel.
 	 */
-	csrw CSR_SCRATCH, zero
+	sw zero,0x408(zero)
 	ret
 
 .align 2
@@ -195,8 +195,8 @@ END(_start)
 
 ENTRY(_start_kernel)
 	/* Mask all interrupts */
-	csrw CSR_IE, zero
-	csrw CSR_IP, zero
+	sw zero,0x410(zero)
+	sw zero,0x414(zero)
 
 #ifdef CONFIG_RISCV_M_MODE
 	/* flush the instruction cache */
@@ -210,21 +210,11 @@ ENTRY(_start_kernel)
 	 * not implement PMPs, so we set up a quick trap handler to just skip
 	 * touching the PMPs on any trap.
 	 */
-	la a0, pmp_done
-	csrw CSR_TVEC, a0
-
-	li a0, -1
-	csrw CSR_PMPADDR0, a0
-	li a0, (PMP_A_NAPOT | PMP_R | PMP_W | PMP_X)
-	csrw CSR_PMPCFG0, a0
-.align 2
-pmp_done:
 
 	/*
 	 * The hartid in a0 is expected later on, and we have no firmware
 	 * to hand it to us.
 	 */
-	csrr a0, CSR_MHARTID
 #endif /* CONFIG_RISCV_M_MODE */
 
 	/* Load the global pointer */
@@ -387,8 +377,7 @@ ENTRY(reset_regs)
 	li	t4, 0
 	li	t5, 0
 	li	t6, 0
-	csrw	CSR_SCRATCH, x0
-
+	sw zero,0x408(zero)
 #ifdef CONFIG_FPU
 	csrr	t0, CSR_MISA
 	andi	t0, t0, (COMPAT_HWCAP_ISA_F | COMPAT_HWCAP_ISA_D)
