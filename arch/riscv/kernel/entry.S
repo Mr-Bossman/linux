@@ -24,6 +24,7 @@ ENTRY(handle_exception)
 	 * the kernel thread pointer.  If we came from the kernel, the scratch
 	 * register will contain 0, and we should continue on the current TP.
 	 */
+	/* last csr */
 	csrrw tp, CSR_SCRATCH, tp
 	bnez tp, _save_context
 
@@ -145,7 +146,9 @@ skip_context_tracking:
 #ifdef CONFIG_TRACE_IRQFLAGS
 	call __trace_hardirqs_on
 #endif
-	csrs CSR_STATUS, SR_IE
+	lw t0, 0x400(zero)
+	or t0, t0, SR_IE
+	sw t0, 0x400(zero)
 
 1:
 	la ra, ret_from_exception
@@ -174,7 +177,9 @@ handle_syscall:
 	 * handle_exception did not do set SR_IE as it always sees SR_PIE
 	 * being cleared.
 	 */
-	csrs CSR_STATUS, SR_IE
+	lw t0, 0x400(zero)
+	or t0, t0, SR_IE
+	sw t0, 0x400(zero)
 #endif
 #if defined(CONFIG_TRACE_IRQFLAGS) || defined(CONFIG_CONTEXT_TRACKING_USER)
 	/* Recover a0 - a7 for system calls */
@@ -281,7 +286,7 @@ resume_userspace:
 	 * Save TP into the scratch register , so we can find the kernel data
 	 * structures again.
 	 */
-	csrw CSR_SCRATCH, tp
+	sw tp, 0x408(zero)
 
 restore_all:
 #ifdef CONFIG_TRACE_IRQFLAGS
@@ -314,7 +319,6 @@ restore_all:
 	 */
 	REG_L  a2, PT_EPC(sp)
 //	REG_SC x0, a2, PT_EPC(sp)
-
 //Put SR_PIE into SR_IE if mcu doesnt do it for us
 	andi t0,a0,SR_PIE
 	srli t0,t0,0x4
@@ -379,7 +383,9 @@ work_pending:
 	bnez s1, work_resched
 work_notifysig:
 	/* Handle pending signals and notify-resume requests */
-	csrs CSR_STATUS, SR_IE /* Enable interrupts for do_notify_resume() */
+	lw t0, 0x400(zero)
+	or t0, t0, SR_IE
+	sw t0, 0x400(zero)
 	move a0, sp /* pt_regs */
 	move a1, s0 /* current_thread_info->flags */
 	tail do_notify_resume
