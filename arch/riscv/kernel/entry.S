@@ -28,7 +28,7 @@ ENTRY(handle_exception)
 	bnez tp, _save_context
 
 _restore_kernel_tpsp:
-	csrr tp, CSR_SCRATCH
+	lw tp,0x408(zero)
 	REG_S sp, TASK_TI_KERNEL_SP(tp)
 
 #ifdef CONFIG_VMAP_STACK
@@ -83,11 +83,11 @@ _save_context:
 	li t0, SR_SUM | SR_FS
 
 	REG_L s0, TASK_TI_USER_SP(tp)
-	csrr s1, CSR_STATUS
-	csrr s2, CSR_EPC
-	csrr s3, CSR_TVAL
-	csrr s4, CSR_CAUSE
-	csrr s5, CSR_SCRATCH
+	lw s1, 0x400(zero)
+	lw s2, 0x418(zero)
+	lw s3, 0x41c(zero)
+	lw s4, 0x420(zero)
+	lw s5, 0x408(zero)
 	REG_S s0, PT_SP(sp)
 	REG_S s1, PT_STATUS(sp)
 	REG_S s2, PT_EPC(sp)
@@ -99,7 +99,7 @@ _save_context:
 	 * Set the scratch register to 0, so that if a recursive exception
 	 * occurs, the exception vector knows it came from the kernel
 	 */
-	csrw CSR_SCRATCH, x0
+	sw zero, 0x408(zero)
 
 	/* Load the global pointer */
 .option push
@@ -315,8 +315,12 @@ restore_all:
 	REG_L  a2, PT_EPC(sp)
 //	REG_SC x0, a2, PT_EPC(sp)
 
-	csrw CSR_STATUS, a0
-	csrw CSR_EPC, a2
+//Put SR_PIE into SR_IE if mcu doesnt do it for us
+	andi t0,a0,SR_PIE
+	srli t0,t0,0x4
+	or a0,a0,t0
+	sw a0, 0x400(zero)
+	sw a2, 0x418(zero)
 
 	REG_L x1,  PT_RA(sp)
 	REG_L x3,  PT_GP(sp)
@@ -486,11 +490,11 @@ restore_caller_reg:
 	REG_S x31, PT_T6(sp)
 
 	REG_L s0, TASK_TI_KERNEL_SP(tp)
-	csrr s1, CSR_STATUS
-	csrr s2, CSR_EPC
-	csrr s3, CSR_TVAL
-	csrr s4, CSR_CAUSE
-	csrr s5, CSR_SCRATCH
+	lw s1, 0x400(zero)
+	lw s2, 0x418(zero)
+	lw s3, 0x41c(zero)
+	lw s4, 0x420(zero)
+	lw s5, 0x408(zero)
 	REG_S s0, PT_SP(sp)
 	REG_S s1, PT_STATUS(sp)
 	REG_S s2, PT_EPC(sp)
