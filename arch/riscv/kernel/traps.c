@@ -201,17 +201,17 @@ static void do_trap_error(struct pt_regs *regs, int signo, int code,
 {
 	current->thread.bad_cause = regs->cause;
 
+	/* If illegal instruction and we can emulate, then
+	 * we need to emulate and skip the instruction.
+	 */
+	if(code == ILL_ILLOPC && do_exinsn(regs)){
+		regs->epc+=4;
+		regs->badaddr+=4;
+		return;
+	}
 	if (user_mode(regs)) {
 		do_trap(regs, signo, code, addr);
 	} else {
-		/* If illegal instruction and we can emulate, then
-		 * we need to emulate and skip the instruction.
-		 */
-		if(code == ILL_ILLOPC && do_exinsn(regs)){
-			regs->epc+=4;
-			regs->badaddr+=4;
-			return;
-		}
 		if (!fixup_exception(regs))
 			die(regs, str);
 	}
