@@ -122,6 +122,7 @@ static int do_exinsn(struct pt_regs *regs){
 	switch (op & 0x7f) {
 		case 0b0101111: do_atomic(regs); return 1;
 		case 0b1110011: do_csr(regs); return 1; //CSRRCI
+		case 0b0001111: return 1; //FENCE
 		default: return 0;
 	}
 }

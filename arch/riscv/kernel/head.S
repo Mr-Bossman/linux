@@ -101,7 +101,7 @@ relocate_enable_mmu:
 	XIP_FIXUP_OFFSET a0
 	srl a0, a0, PAGE_SHIFT
 	or a0, a0, a1
-	sfence.vma
+//	sfence.vma
 	csrw CSR_SATP, a0
 .align 2
 1:
@@ -122,7 +122,7 @@ relocate_enable_mmu:
 	 * because that first superpage is translated the same way.
 	 */
 	csrw CSR_SATP, a2
-	sfence.vma
+//	sfence.vma
 
 	ret
 #endif /* CONFIG_MMU */
@@ -200,7 +200,7 @@ ENTRY(_start_kernel)
 
 #ifdef CONFIG_RISCV_M_MODE
 	/* flush the instruction cache */
-	fence.i
+	//fence.i
 
 	/* Reset all registers except ra, a0, a1 */
 	call reset_regs
@@ -350,7 +350,7 @@ clear_bss_done:
 	REG_L tp, (a2)
 	beqz sp, .Lwait_for_cpu_up
 	beqz tp, .Lwait_for_cpu_up
-	fence
+	//fence
 
 	tail .Lsecondary_start_common
 #endif /* CONFIG_RISCV_BOOT_SPINWAIT */
