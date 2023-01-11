@@ -25,7 +25,11 @@ ENTRY(handle_exception)
 	 * register will contain 0, and we should continue on the current TP.
 	 */
 	/* last csr */
-	csrrw tp, CSR_SCRATCH, tp
+	sw t0, -4(sp)
+	lw t0,0x408(zero)
+	sw tp,0x408(zero)
+	move tp,t0
+	lw t0, -4(sp)
 	bnez tp, _save_context
 
 _restore_kernel_tpsp:
