@@ -88,9 +88,11 @@ static void do_csr(struct pt_regs *regs){
 	/*The microop isnt imm */
 	if(!(microop>>2))
 		rs1imm = *regs_get_register_p(regs,rs1imm);
-	if(csr == 0x300)
-		csrval = regs->status | ((regs->status >> 4)&0x8);
-	else
+	if(csr == 0x300){
+		csrval = regs->status;
+		//Move SR_PIE into SR_IE as if excption wasnt called
+		csrval = (csrval&(~0x88)) | (csrval&0x80)>>4;
+	} else
 		csrval = csr_rd(csr);
 	if((op >> 7) & 0x1f)
 		*rsd = csrval;
@@ -99,9 +101,11 @@ static void do_csr(struct pt_regs *regs){
 		case 0b10: csrval |= rs1imm; break; //CSRRS
 		case 0b11: csrval &= ~rs1imm; break; //CSRRC
 	}
-	if(csr == 0x300)
+	if(csr == 0x300){
+		//Move SR_IE into SR_PIE so MRET will put it in SR_IE
+		csrval |= (csrval&0x8)<<4;
 		regs->status = csrval;
-	else
+	} else
 		csr_wr(csr,csrval);
 
 }
