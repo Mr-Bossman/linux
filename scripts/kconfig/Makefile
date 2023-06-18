@@ -32,9 +32,11 @@ unexport CONFIG_
 
 config-prog	:= conf
 menuconfig-prog	:= mconf
+mconfig-prog	:= mconf
 nconfig-prog	:= nconf
 gconfig-prog	:= gconf
 xconfig-prog	:= qconf
+qconfig-prog	:= qconf
 
 define config_rule
 PHONY += $(1)
@@ -45,7 +47,7 @@ PHONY += build_$(1)
 build_$(1): $(obj)/$($(1)-prog)
 endef
 
-$(foreach c, config menuconfig nconfig gconfig xconfig, $(eval $(call config_rule,$(c))))
+$(foreach c, config menuconfig mconfig nconfig gconfig xconfig qconfig, $(eval $(call config_rule,$(c))))
 
 PHONY += localmodconfig localyesconfig
 localyesconfig localmodconfig: $(obj)/conf
@@ -118,7 +120,9 @@ help:
 	@echo  '  config	  - Update current config utilising a line-oriented program'
 	@echo  '  nconfig         - Update current config utilising a ncurses menu based program'
 	@echo  '  menuconfig	  - Update current config utilising a menu based program'
+	@echo  '  mconfig	  - Alias to menuconfig'
 	@echo  '  xconfig	  - Update current config utilising a Qt based front-end'
+	@echo  '  qconfig         - Alias to xconfig
 	@echo  '  gconfig	  - Update current config utilising a GTK+ based front-end'
 	@echo  '  oldconfig	  - Update current config utilising a provided .config as base'
 	@echo  '  localmodconfig  - Update current config disabling modules not loaded'
