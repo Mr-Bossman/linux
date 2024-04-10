@@ -10,6 +10,7 @@
 #include <asm/mmio.h>
 
 #ifdef CONFIG_RISCV_M_MODE
+#include <linux/jump_label.h>
 /*
  * This lives in the CLINT driver, but is accessed directly by timex.h to avoid
  * any overhead when accessing the MMIO timer.
@@ -21,6 +22,7 @@
  * like "riscv_mtime", to signify that these non-ISA assumptions must hold.
  */
 extern u64 __iomem *clint_time_val;
+DECLARE_STATIC_KEY_FALSE(riscv_csr_time_available);
 #endif
 
 #endif
