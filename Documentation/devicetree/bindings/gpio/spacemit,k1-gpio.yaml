@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/gpio/spacemit,k1-gpio.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: SpacemiT K1 GPIO controller
+
+description: >
+  The controller's registers are organized as sets of eight 32-bit
+  registers with each set controlling a bank of up to 32 pins.  A single
+  interrupt is shared for all of the banks handled by the controller.
+
+maintainers:
+  - Yixun Lan <dlan@gentoo.org>
+
+properties:
+  $nodename:
+    pattern: '^gpio@[0-9a-f]+$'
+
+  compatible:
+    items:
+      - const: spacemit,k1-gpio
+
+  reg:
+    maxItems: 1
+    description: >
+      Define the base and range of the I/O address space containing
+      the SpacemiT K1 GPIO controller registers
+
+  ranges: true
+
+  "#gpio-cells":
+    const: 2
+    description: >
+      The first cell is the pin number (within the controller's
+      pin space), and the second is used for the following:
+      bit[0]: polarity (0 for active-high, 1 for active-low)
+
+  gpio-controller: true
+
+  gpio-ranges: true
+
+  interrupts:
+    maxItems: 1
+    description:
+      The interrupt shared by all GPIO lines for this controller.
+
+  interrupt-names:
+    items:
+      - const: gpio_mux
+
+  "#interrupt-cells":
+    const: 2
+    description: |
+      The first cell is the GPIO number, the second should specify
+      flags.  The following subset of flags is supported:
+      - bits[3:0] trigger type and level flags
+        1 = low-to-high edge triggered
+        2 = high-to-low edge triggered
+      Valid combinations are 1, 2
+
+  interrupt-controller: true
+
+required:
+  - compatible
+  - reg
+  - gpio-controller
+  - '#gpio-cells'
+  - interrupts
+  - interrupt-names
+  - interrupt-controller
+  - '#interrupt-cells'
+
+additionalProperties: false
+
+examples:
+  - |
+    soc {
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+        gpio@d4019000 {
+            compatible = "spacemit,k1-gpio";
+            reg = <0x0 0xd4019000 0x0 0x800>;
+            gpio-controller;
+            #gpio-cells = <2>;
+            interrupts = <58>;
+            interrupt-names = "gpio_mux";
+            interrupt-parent = <&plic>;
+            interrupt-controller;
+            #interrupt-cells = <2>;
+            gpio-ranges = <&pinctrl 0 0 128>;
+        };
+    };
