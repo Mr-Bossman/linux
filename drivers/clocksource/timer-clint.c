@@ -28,9 +28,9 @@
 #include <asm/clint.h>
 #endif
 
-#define CLINT_IPI_OFF		0
-#define CLINT_TIMER_CMP_OFF	0x4000
-#define CLINT_TIMER_VAL_OFF	0xbff8
+#define CLINT_IPI_OFF		0x1a0
+#define CLINT_TIMER_CMP_OFF	0x1b8
+#define CLINT_TIMER_VAL_OFF	0x1b0
 
 /* CLINT manages IPI and Timer for RISC-V M-mode  */
 static u32 __iomem *clint_ipi_base;
