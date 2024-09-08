@@ -639,6 +639,12 @@ config THEAD_C900_ACLINT_SSWI
 	  This enables support for T-HEAD specific ACLINT SSWI device
 	  support.
 
+config SIMPLE_INTC
+	bool "Simple External Interrupt Controller"
+	select IRQ_DOMAIN_HIERARCHY
+	help
+	  This enables support for a simple INTC chip.
+
 	  If you don't know what to do here, say Y.
 
 config EXYNOS_IRQ_COMBINER
