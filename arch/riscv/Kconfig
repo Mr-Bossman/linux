@@ -270,8 +270,7 @@ config MMU
 
 config PAGE_OFFSET
 	hex
-	default 0x80000000 if !MMU && RISCV_M_MODE
-	default 0x80200000 if !MMU
+	default DRAM_BASE if !MMU
 	default 0xc0000000 if 32BIT
 	default 0xff60000000000000 if 64BIT
 
@@ -392,6 +391,19 @@ config ARCH_RV64I
 	select SWIOTLB if MMU
 
 endchoice
+
+config SET_MEM_PARAM
+        bool "Set flash/sdram base addr"
+	depends on !MMU
+        help
+         Say Y to manually set the base addresses and sizes.
+         otherwise, the default values are assigned.
+
+config DRAM_BASE
+	hex "DRAM base address" if SET_MEM_PARAM
+	depends on !MMU
+	default 0x80000000 if RISCV_M_MODE
+	default 0x80200000
 
 # We must be able to map all physical memory into the kernel, but the compiler
 # is still a bit more efficient when generating code if it's setup in a manner
