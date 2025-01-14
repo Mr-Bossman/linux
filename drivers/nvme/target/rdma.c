@@ -773,7 +773,7 @@ static void nvmet_rdma_read_data_done(struct ib_cq *cq, struct ib_wc *wc)
 	if (unlikely(status))
 		nvmet_req_complete(&rsp->req, status);
 	else
-		rsp->req.execute(&rsp->req);
+		nvmet_execute_request(&rsp->req);
 }
 
 static void nvmet_rdma_write_data_done(struct ib_cq *cq, struct ib_wc *wc)
@@ -959,7 +959,7 @@ static bool nvmet_rdma_execute_command(struct nvmet_rdma_rsp *rsp)
 				queue->cm_id->port_num, &rsp->read_cqe, NULL))
 			nvmet_req_complete(&rsp->req, NVME_SC_DATA_XFER_ERROR);
 	} else {
-		rsp->req.execute(&rsp->req);
+		nvmet_execute_request(&rsp->req);
 	}
 
 	return true;

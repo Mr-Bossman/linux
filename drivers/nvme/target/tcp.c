@@ -622,7 +622,7 @@ static void nvmet_tcp_execute_request(struct nvmet_tcp_cmd *cmd)
 	if (unlikely(cmd->flags & NVMET_TCP_F_INIT_FAILED))
 		nvmet_tcp_queue_response(&cmd->req);
 	else
-		cmd->req.execute(&cmd->req);
+		nvmet_execute_request(&cmd->req);
 }
 
 static int nvmet_try_send_data_pdu(struct nvmet_tcp_cmd *cmd)
@@ -1116,7 +1116,7 @@ static int nvmet_tcp_done_recv_pdu(struct nvmet_tcp_queue *queue)
 		goto out;
 	}
 
-	queue->cmd->req.execute(&queue->cmd->req);
+	nvmet_execute_request(&queue->cmd->req);
 out:
 	nvmet_prepare_receive_pdu(queue);
 	return ret;
