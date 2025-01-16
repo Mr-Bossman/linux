@@ -811,10 +811,23 @@ static void __nvmet_req_complete(struct nvmet_req *req, u16 status)
 		nvmet_put_namespace(ns);
 }
 
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+static void nvmet_delayed_execute_req(struct work_struct *work);
+#endif
+
 void nvmet_req_complete(struct nvmet_req *req, u16 status)
 {
 	struct nvmet_sq *sq = req->sq;
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+	unsigned long flags;
 
+	/* only need to update the xarray if this was a delayed request */
+	if (req->req_work.work.func == nvmet_delayed_execute_req) {
+		xa_lock_irqsave(&sq->outstanding_requests, flags);
+		__xa_erase(&sq->outstanding_requests, req->cmd->common.command_id);
+		xa_unlock_irqrestore(&sq->outstanding_requests, flags);
+	}
+#endif
 	__nvmet_req_complete(req, status);
 	percpu_ref_put(&sq->ref);
 }
@@ -1035,6 +1048,9 @@ int nvmet_sq_init(struct nvmet_sq *sq, struct nvmet_cq *cq)
 	nvmet_auth_sq_init(sq);
 	sq->cq = cq;
 
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+	xa_init_flags(&sq->outstanding_requests, XA_FLAGS_LOCK_IRQ);
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(nvmet_sq_init);
@@ -1818,6 +1834,7 @@ void nvmet_execute_request(struct nvmet_req *req) {
 	struct nvmet_ctrl *ctrl = req->sq->ctrl;
 	int delay_count;
 	u32 delay_msec;
+	unsigned long flags;
 
 	if (unlikely(req->sq->qid == 0))
 		return req->execute(req);
@@ -1828,6 +1845,17 @@ void nvmet_execute_request(struct nvmet_req *req) {
 	}
 	if (!(ctrl && delay_count && delay_msec))
 		return req->execute(req);
+
+	xa_lock_irqsave(&req->sq->outstanding_requests, flags);
+	int ret = __xa_insert(&req->sq->outstanding_requests,
+			    req->cmd->common.command_id, req, GFP_KERNEL);
+	xa_unlock_irqrestore(&req->sq->outstanding_requests, flags);
+
+	if (ret) {
+		pr_err("nvmet: failure to delay command %d",
+		       req->cmd->common.command_id);
+		return req->execute(req);
+	}
 
 	INIT_DELAYED_WORK(&req->req_work, nvmet_delayed_execute_req);
 	queue_delayed_work(nvmet_wq, &req->req_work, msecs_to_jiffies(delay_msec));

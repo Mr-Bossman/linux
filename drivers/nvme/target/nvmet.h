@@ -176,6 +176,9 @@ struct nvmet_sq {
 #endif
 	struct completion	free_done;
 	struct completion	confirm_done;
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+	struct xarray		outstanding_requests;
+#endif
 };
 
 struct nvmet_ana_group {
@@ -581,6 +584,7 @@ size_t nvmet_req_transfer_len(struct nvmet_req *req);
 bool nvmet_check_transfer_len(struct nvmet_req *req, size_t len);
 bool nvmet_check_data_len_lte(struct nvmet_req *req, size_t data_len);
 void nvmet_req_complete(struct nvmet_req *req, u16 status);
+void nvmet_req_complete_delayed(struct nvmet_req *req, u16 status);
 int nvmet_req_alloc_sgls(struct nvmet_req *req);
 void nvmet_req_free_sgls(struct nvmet_req *req);
 
