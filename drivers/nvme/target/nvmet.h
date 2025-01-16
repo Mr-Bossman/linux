@@ -501,6 +501,9 @@ struct nvmet_req {
 	u16			error_loc;
 	u64			error_slba;
 	struct nvmet_pr_per_ctrl_ref *pc_ref;
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+	struct delayed_work	req_work;
+#endif
 };
 
 #define NVMET_MAX_MPOOL_BVEC		16
@@ -998,5 +1001,10 @@ struct nvmet_feat_arbitration {
 	u8		ab;
 };
 
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+void nvmet_execute_request(struct nvmet_req *req);
+#else
 static inline void nvmet_execute_request(struct nvmet_req *req) { req->execute(req); }
+#endif
+
 #endif /* _NVMET_H */

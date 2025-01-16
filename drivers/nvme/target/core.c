@@ -7,7 +7,9 @@
 #include <linux/hex.h>
 #include <linux/module.h>
 #include <linux/random.h>
+#include <linux/jiffies.h>
 #include <linux/rculist.h>
+#include <linux/workqueue.h>
 #include <linux/pci-p2pdma.h>
 #include <linux/scatterlist.h>
 
@@ -1804,6 +1806,34 @@ ssize_t nvmet_ctrl_host_traddr(struct nvmet_ctrl *ctrl,
 		return -EOPNOTSUPP;
 	return ctrl->ops->host_traddr(ctrl, traddr, traddr_len);
 }
+
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+static void nvmet_delayed_execute_req(struct work_struct *work) {
+	struct nvmet_req *req =
+		container_of(to_delayed_work(work), struct nvmet_req, req_work);
+	req->execute(req);
+}
+
+void nvmet_execute_request(struct nvmet_req *req) {
+	struct nvmet_ctrl *ctrl = req->sq->ctrl;
+	int delay_count;
+	u32 delay_msec;
+
+	if (unlikely(req->sq->qid == 0))
+		return req->execute(req);
+
+	if (ctrl) {
+		delay_count = atomic_dec_if_positive(&ctrl->delay_count) + 1;
+		delay_msec = ctrl->delay_msec;
+	}
+	if (!(ctrl && delay_count && delay_msec))
+		return req->execute(req);
+
+	INIT_DELAYED_WORK(&req->req_work, nvmet_delayed_execute_req);
+	queue_delayed_work(nvmet_wq, &req->req_work, msecs_to_jiffies(delay_msec));
+}
+EXPORT_SYMBOL_GPL(nvmet_execute_request);
+#endif
 
 static struct nvmet_subsys *nvmet_find_get_subsys(struct nvmet_port *port,
 		const char *subsysnqn)
