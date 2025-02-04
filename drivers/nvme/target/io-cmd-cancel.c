@@ -14,6 +14,8 @@ void nvmet_execute_cancel(struct nvmet_req *req)
 	int ret = 0;
 	struct nvmet_ctrl *ctrl = req->sq->ctrl;
 	struct nvmet_sq *sq = req->sq;
+	struct nvmet_req *treq;
+	u32 canceled = 0;
 
 	if (!nvmet_check_transfer_len(req, 0))
 		return;
@@ -45,8 +47,31 @@ void nvmet_execute_cancel(struct nvmet_req *req)
 		ret = NVME_SC_INVALID_FIELD | NVME_STATUS_DNR;
 	}
 
+	if (!mult_cmds) {
+		treq = xa_load(&sq->outstanding_requests, cid);
+		if (treq) {
+			if (cancel_delayed_work(&treq->req_work)) {
+				pr_info("nvmet: CANCEL success: %d", cid);
+				nvmet_req_complete(treq, NVME_SC_ABORT_REQ);
+				canceled += 1;
+			} else {
+				pr_info("nvmet: CANCEL failed: %d", cid);
+			}
+		} else {
+			pr_info("nvmet: CANCEL request not found: %d", cid);
+		}
+	} else {
+		unsigned long ucid;
+		xa_for_each(&sq->outstanding_requests, ucid, treq) {
+			if (cancel_delayed_work(&treq->req_work)) {
+				nvmet_req_complete(treq, NVME_SC_ABORT_REQ);
+				canceled += 1;
+			}
+		}
+		pr_info("nvmet: CANCEL removed %d requests", canceled);
+	}
 exit:
-	nvmet_set_result(req, 0);
+	nvmet_set_result(req, canceled);
 	nvmet_req_complete(req, ret);
 }
 

@@ -11,7 +11,8 @@ obj-$(CONFIG_NVME_TARGET_TCP)		+= nvmet-tcp.o
 obj-$(CONFIG_NVME_TARGET_PCI_EPF)	+= nvmet-pci-epf.o
 
 nvmet-y		+= core.o configfs.o admin-cmd.o fabrics-cmd.o \
-			discovery.o io-cmd-file.o io-cmd-bdev.o pr.o io-cmd-cancel.o
+			discovery.o io-cmd-file.o io-cmd-bdev.o pr.o
+nvmet-$(CONFIG_NVME_TARGET_DELAY_REQUESTS) += io-cmd-cancel.o
 nvmet-$(CONFIG_NVME_TARGET_DEBUGFS)	+= debugfs.o
 nvmet-$(CONFIG_NVME_TARGET_PASSTHRU)	+= passthru.o
 nvmet-$(CONFIG_BLK_DEV_ZONED)		+= zns.o

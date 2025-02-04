@@ -40,8 +40,6 @@
 #define nvmet_for_each_enabled_ns(xa, index, entry) \
 	xa_for_each_marked(xa, index, entry, NVMET_NS_ENABLED)
 
-extern bool emulate_cancel_support;
-
 /*
  * Supported optional AENs:
  */

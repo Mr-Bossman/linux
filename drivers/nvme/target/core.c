@@ -32,10 +32,6 @@ EXPORT_SYMBOL_GPL(nvmet_wq);
 struct workqueue_struct *nvmet_aen_wq;
 EXPORT_SYMBOL_GPL(nvmet_aen_wq);
 
-bool emulate_cancel_support;
-module_param(emulate_cancel_support, bool, 0644);
-MODULE_PARM_DESC(emulate_cancel_support, "Emulate the cancel command support. Default = false");
-
 /*
  * This read/write semaphore is used to synchronize access to configuration
  * information on a target system that will result in discovery log page
@@ -1129,12 +1125,13 @@ static u16 nvmet_parse_io_cmd(struct nvmet_req *req)
 	if (nvmet_is_passthru_req(req))
 		return nvmet_parse_passthru_io_cmd(req);
 
-	if (emulate_cancel_support &&
-	    req->cmd->common.opcode == nvme_cmd_cancel) {
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+	if (req->cmd->common.opcode == nvme_cmd_cancel) {
 		req->execute = nvmet_execute_cancel;
 		if (req->cmd->cancel.nsid == NVME_NSID_ALL)
 			return 0;
 	}
+#endif
 
 	ret = nvmet_req_find_ns(req);
 	if (unlikely(ret))
