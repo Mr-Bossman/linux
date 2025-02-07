@@ -1248,6 +1248,14 @@ u32 nvme_command_effects(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode)
 }
 EXPORT_SYMBOL_NS_GPL(nvme_command_effects, "NVME_TARGET_PASSTHRU");
 
+bool nvme_io_command_supported(struct nvme_ctrl *ctrl, u8 opcode)
+{
+	u32 effects = le32_to_cpu(ctrl->effects->iocs[opcode]);
+
+	return effects & NVME_CMD_EFFECTS_CSUPP;
+}
+EXPORT_SYMBOL_GPL(nvme_io_command_supported);
+
 u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode)
 {
 	u32 effects = nvme_command_effects(ctrl, ns, opcode);
@@ -5002,9 +5010,14 @@ int nvme_alloc_io_tag_set(struct nvme_ctrl *ctrl, struct blk_mq_tag_set *set,
 	 */
 	if (ctrl->quirks & NVME_QUIRK_SHARED_TAGS)
 		set->reserved_tags = NVME_AQ_DEPTH;
-	else if (ctrl->ops->flags & NVME_F_FABRICS)
+	else if (ctrl->ops->flags & NVME_F_FABRICS) {
 		/* Reserved for fabric connect */
 		set->reserved_tags = 1;
+		if (nvme_io_command_supported(ctrl, nvme_cmd_cancel)) {
+			/* Reserved for cancel commands */
+			set->reserved_tags += NVME_RSV_CANCEL_MAX;
+		}
+	}
 	set->numa_node = ctrl->numa_node;
 	if (ctrl->ops->flags & NVME_F_BLOCKING)
 		set->flags |= BLK_MQ_F_BLOCKING;
