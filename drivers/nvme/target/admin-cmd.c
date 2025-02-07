@@ -389,6 +389,10 @@ static void nvmet_get_cmd_effects_nvm(struct nvme_effects_log *log)
 	log->iocs[nvme_cmd_resv_release] =
 	log->iocs[nvme_cmd_resv_report] =
 		cpu_to_le32(NVME_CMD_EFFECTS_CSUPP);
+	if (emulate_cancel_support) {
+		log->iocs[nvme_cmd_cancel] =
+			cpu_to_le32(NVME_CMD_EFFECTS_CSUPP);
+	}
 	log->iocs[nvme_cmd_write] =
 	log->iocs[nvme_cmd_write_zeroes] =
 		cpu_to_le32(NVME_CMD_EFFECTS_CSUPP | NVME_CMD_EFFECTS_LBCC);

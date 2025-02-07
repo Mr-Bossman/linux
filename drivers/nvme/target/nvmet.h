@@ -40,6 +40,8 @@
 #define nvmet_for_each_enabled_ns(xa, index, entry) \
 	xa_for_each_marked(xa, index, entry, NVMET_NS_ENABLED)
 
+extern bool emulate_cancel_support;
+
 /*
  * Supported optional AENs:
  */
@@ -727,6 +729,8 @@ void nvmet_execute_identify_ns_zns(struct nvmet_req *req);
 void nvmet_bdev_execute_zone_mgmt_recv(struct nvmet_req *req);
 void nvmet_bdev_execute_zone_mgmt_send(struct nvmet_req *req);
 void nvmet_bdev_execute_zone_append(struct nvmet_req *req);
+
+void nvmet_execute_cancel(struct nvmet_req *req);
 
 static inline u32 nvmet_rw_data_len(struct nvmet_req *req)
 {
