@@ -312,6 +312,10 @@ struct nvmet_ctrl {
 #ifdef CONFIG_NVME_TARGET_TCP_TLS
 	struct key		*tls_key;
 #endif
+#ifdef CONFIG_NVME_TARGET_DELAY_REQUESTS
+	atomic_t		delay_count;
+	u32			delay_msec;
+#endif
 	struct nvmet_pr_log_mgr pr_log_mgr;
 };
 

@@ -136,3 +136,12 @@ config NVME_TARGET_PCI_EPF
 	  capable PCI controller.
 
 	  If unsure, say N.
+
+config NVME_TARGET_DELAY_REQUESTS
+	bool "NVMe over Fabrics target request delay"
+	depends on NVME_TARGET && NVME_TARGET_DEBUGFS
+	help
+	  This is a testing feature to allow delaying request completion in an
+	  NVMe over Fabrics target, which allows for support of the cancel command.
+
+	  If unsure, say N.

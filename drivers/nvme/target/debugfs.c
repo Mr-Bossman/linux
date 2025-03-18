@@ -153,6 +153,42 @@ static int nvmet_ctrl_tls_concat_show(struct seq_file *m, void *p)
 NVMET_DEBUGFS_ATTR(nvmet_ctrl_tls_concat);
 #endif
 
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+static int nvmet_ctrl_delay_show(struct seq_file *m, void *p)
+{
+	struct nvmet_ctrl *ctrl = m->private;
+	int delay_count = atomic_read(&ctrl->delay_count);
+
+	seq_printf(m, "%u %u\n", delay_count, ctrl->delay_msec);
+	return 0;
+}
+
+static ssize_t nvmet_ctrl_delay_write(struct file *file, const char __user *buf,
+				      size_t count, loff_t *ppos)
+{
+	struct seq_file *m = file->private_data;
+	struct nvmet_ctrl *ctrl = m->private;
+	char delay_buf[22] = {};
+	int delay_count;
+	int delay_msec;
+	int n;
+
+	if (count >= sizeof(delay_buf))
+		return -EINVAL;
+	if (copy_from_user(delay_buf, buf, count))
+		return -EFAULT;
+
+	n = sscanf(delay_buf, "%u %u", &delay_count, &delay_msec);
+	if (n < 1 || n > 2)
+		return -EINVAL;
+	if (n == 2)
+		ctrl->delay_msec = delay_msec;
+	atomic_set(&ctrl->delay_count, delay_count);
+	return count;
+}
+NVMET_DEBUGFS_RW_ATTR(nvmet_ctrl_delay);
+#endif /* CONFIG_NVME_TARGET_DELAY_REQUESTS */
+
 int nvmet_debugfs_ctrl_setup(struct nvmet_ctrl *ctrl)
 {
 	char name[32];
@@ -183,6 +219,10 @@ int nvmet_debugfs_ctrl_setup(struct nvmet_ctrl *ctrl)
 			    &nvmet_ctrl_tls_concat_fops);
 	debugfs_create_file("tls_key", S_IRUSR, ctrl->debugfs_dir, ctrl,
 			    &nvmet_ctrl_tls_key_fops);
+#endif
+#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
+	debugfs_create_file("delay", S_IWUSR, ctrl->debugfs_dir, ctrl,
+			    &nvmet_ctrl_delay_fops);
 #endif
 	return 0;
 }
