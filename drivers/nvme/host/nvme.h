@@ -1295,6 +1295,7 @@ static inline void nvme_auth_revoke_tls_key(struct nvme_ctrl *ctrl) {};
 u32 nvme_command_effects(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
 			 u8 opcode);
 bool nvme_io_command_supported(struct nvme_ctrl *ctrl, u8 opcode);
+bool nvme_is_cancel(struct nvme_command *cmd);
 u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode);
 int nvme_execute_rq(struct request *rq, bool at_head);
 void nvme_passthru_end(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u32 effects,

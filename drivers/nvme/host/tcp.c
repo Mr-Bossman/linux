@@ -85,6 +85,7 @@ struct nvme_tcp_request {
 	size_t			offset;
 	size_t			data_sent;
 	enum nvme_tcp_send_state state;
+	bool			aborted;
 };
 
 enum nvme_tcp_queue_flags {
@@ -92,6 +93,8 @@ enum nvme_tcp_queue_flags {
 	NVME_TCP_Q_LIVE		= 1,
 	NVME_TCP_Q_POLLING	= 2,
 	NVME_TCP_Q_IO_CPU_SET	= 3,
+	NVME_TCP_Q_CANCEL_ONE   = 4,
+	NVME_TCP_Q_CANCEL_ALL   = 5,
 };
 
 enum nvme_tcp_recv_state {
@@ -173,6 +176,7 @@ static struct workqueue_struct *nvme_tcp_wq;
 static const struct blk_mq_ops nvme_tcp_mq_ops;
 static const struct blk_mq_ops nvme_tcp_admin_mq_ops;
 static int nvme_tcp_try_send(struct nvme_tcp_queue *queue);
+static void nvme_tcp_complete_rq(struct request *rq);
 
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 /* lockdep can detect a circular dependency of the form
@@ -632,7 +636,7 @@ static int nvme_tcp_process_nvme_cqe(struct nvme_tcp_queue *queue,
 		req->status = cqe->status;
 
 	if (!nvme_try_complete_req(rq, req->status, cqe->result))
-		nvme_complete_rq(rq);
+		nvme_tcp_complete_rq(rq);
 	queue->nr_cqe++;
 
 	return 0;
@@ -898,7 +902,7 @@ static inline void nvme_tcp_end_request(struct request *rq, u16 status)
 	union nvme_result res = {};
 
 	if (!nvme_try_complete_req(rq, cpu_to_le16(status << 1), res))
-		nvme_complete_rq(rq);
+		nvme_tcp_complete_rq(rq);
 }
 
 static int nvme_tcp_recv_data(struct nvme_tcp_queue *queue, struct sk_buff *skb,
@@ -1910,6 +1914,8 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl, int qid,
 		goto err_init_connect;
 
 	set_bit(NVME_TCP_Q_ALLOCATED, &queue->flags);
+	clear_bit(NVME_TCP_Q_CANCEL_ONE, &queue->flags);
+	clear_bit(NVME_TCP_Q_CANCEL_ALL, &queue->flags);
 
 	return 0;
 
@@ -2663,10 +2669,12 @@ static void nvme_tcp_complete_timed_out(struct request *rq)
 static enum blk_eh_timer_return nvme_tcp_timeout(struct request *rq)
 {
 	struct nvme_tcp_request *req = blk_mq_rq_to_pdu(rq);
-	struct nvme_ctrl *ctrl = &req->queue->ctrl->ctrl;
 	struct nvme_tcp_cmd_pdu *pdu = nvme_tcp_req_cmd_pdu(req);
 	struct nvme_command *cmd = &pdu->cmd;
-	int qid = nvme_tcp_queue_id(req->queue);
+	struct nvme_tcp_queue *queue = req->queue;
+	struct nvme_ctrl *ctrl = &queue->ctrl->ctrl;
+	int qid = nvme_tcp_queue_id(queue);
+	int error, action;
 
 	dev_warn(ctrl->device,
 		 "I/O tag %d (%04x) type %d opcode %#x (%s) QID %d timeout\n",
@@ -2691,10 +2699,50 @@ static enum blk_eh_timer_return nvme_tcp_timeout(struct request *rq)
 		return BLK_EH_DONE;
 	}
 
+	if (!req->aborted) {
+		if (!qid)
+			goto err_recovery;
+
+		if (!nvme_io_command_supported(ctrl, nvme_cmd_cancel)) {
+			error = nvme_submit_abort_req(ctrl, rq, qid);
+			if (error) {
+				if (error == -EBUSY)
+					return BLK_EH_RESET_TIMER;
+				goto err_recovery;
+			}
+
+			goto abort;
+		}
+
+		if (!test_and_set_bit(NVME_TCP_Q_CANCEL_ONE, &queue->flags)) {
+			action = NVME_CANCEL_ACTION_SINGLE_CMD;
+		} else if (!test_and_set_bit(NVME_TCP_Q_CANCEL_ALL,
+						&queue->flags)) {
+			action = NVME_CANCEL_ACTION_MUL_CMD;
+		} else {
+			/* No free reserved commands.
+			 * this means a "multiple commands" cancel
+			 * is currently under execution and this request
+			 * is likely to be canceled. Mark this
+			 * request as aborted and reset the timer.
+			 */
+			goto abort;
+		}
+
+		error = nvme_submit_cancel_req(ctrl, rq, qid, action);
+		if (error)
+			goto err_recovery;
+
+abort:
+		req->aborted = true;
+		return BLK_EH_RESET_TIMER;
+	}
+
 	/*
 	 * LIVE state should trigger the normal error recovery which will
 	 * handle completing this request.
 	 */
+err_recovery:
 	nvme_tcp_error_recovery(ctrl);
 	return BLK_EH_RESET_TIMER;
 }
@@ -2739,6 +2787,7 @@ static blk_status_t nvme_tcp_setup_cmd_pdu(struct nvme_ns *ns,
 	req->pdu_len = 0;
 	req->pdu_sent = 0;
 	req->h2cdata_left = 0;
+	req->aborted = false;
 	req->data_len = blk_rq_nr_phys_segments(rq) ?
 				blk_rq_payload_bytes(rq) : 0;
 	req->curr_bio = rq->bio;
@@ -2855,10 +2904,24 @@ static int nvme_tcp_get_address(struct nvme_ctrl *ctrl, char *buf, int size)
 	return len;
 }
 
+static void nvme_tcp_complete_rq(struct request *rq)
+{
+	struct nvme_tcp_request *req = blk_mq_rq_to_pdu(rq);
+	struct nvme_tcp_queue *queue = req->queue;
+	bool is_cancel = nvme_is_cancel(req->req.cmd);
+
+	nvme_complete_rq(rq);
+
+	if (is_cancel) {
+		if (!test_and_clear_bit(NVME_TCP_Q_CANCEL_ALL, &queue->flags))
+			clear_bit(NVME_TCP_Q_CANCEL_ONE, &queue->flags);
+	}
+}
+
 static const struct blk_mq_ops nvme_tcp_mq_ops = {
 	.queue_rq	= nvme_tcp_queue_rq,
 	.commit_rqs	= nvme_tcp_commit_rqs,
-	.complete	= nvme_complete_rq,
+	.complete	= nvme_tcp_complete_rq,
 	.init_request	= nvme_tcp_init_request,
 	.exit_request	= nvme_tcp_exit_request,
 	.init_hctx	= nvme_tcp_init_hctx,
