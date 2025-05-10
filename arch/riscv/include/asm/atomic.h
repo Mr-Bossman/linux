@@ -198,11 +198,10 @@ ATOMIC_OPS(xor, xor, i)
 #define _arch_atomic_fetch_add_unless(_prev, _rc, counter, _a, _u, sfx)	\
 ({									\
 	__asm__ __volatile__ (						\
-		"0:	lr." sfx "     %[p],  %[c]\n"			\
+		"0:	l" sfx "       %[p],  %[c]\n"			\
 		"	beq	       %[p],  %[u], 1f\n"		\
 		"	add            %[rc], %[p], %[a]\n"		\
-		"	sc." sfx ".rl  %[rc], %[rc], %[c]\n"		\
-		"	bnez           %[rc], 0b\n"			\
+		"	s" sfx "       %[rc], %[c]\n"			\
 		"	fence          rw, rw\n"			\
 		"1:\n"							\
 		: [p]"=&r" (_prev), [rc]"=&r" (_rc), [c]"+A" (counter)	\
@@ -237,11 +236,10 @@ static __always_inline s64 arch_atomic64_fetch_add_unless(atomic64_t *v, s64 a, 
 #define _arch_atomic_inc_unless_negative(_prev, _rc, counter, sfx)	\
 ({									\
 	__asm__ __volatile__ (						\
-		"0:	lr." sfx "      %[p],  %[c]\n"			\
+		"0:	l" sfx "        %[p],  %[c]\n"			\
 		"	bltz            %[p],  1f\n"			\
 		"	addi            %[rc], %[p], 1\n"		\
-		"	sc." sfx ".rl   %[rc], %[rc], %[c]\n"		\
-		"	bnez            %[rc], 0b\n"			\
+		"	s" sfx "        %[rc], %[c]\n"			\
 		"	fence           rw, rw\n"			\
 		"1:\n"							\
 		: [p]"=&r" (_prev), [rc]"=&r" (_rc), [c]"+A" (counter)	\
@@ -263,11 +261,10 @@ static __always_inline bool arch_atomic_inc_unless_negative(atomic_t *v)
 #define _arch_atomic_dec_unless_positive(_prev, _rc, counter, sfx)	\
 ({									\
 	__asm__ __volatile__ (						\
-		"0:	lr." sfx "      %[p],  %[c]\n"			\
+		"0:	l" sfx "        %[p],  %[c]\n"			\
 		"	bgtz            %[p],  1f\n"			\
 		"	addi            %[rc], %[p], -1\n"		\
-		"	sc." sfx ".rl   %[rc], %[rc], %[c]\n"		\
-		"	bnez            %[rc], 0b\n"			\
+		"	s" sfx "        %[rc], %[c]\n"			\
 		"	fence           rw, rw\n"			\
 		"1:\n"							\
 		: [p]"=&r" (_prev), [rc]"=&r" (_rc), [c]"+A" (counter)	\
@@ -289,11 +286,10 @@ static __always_inline bool arch_atomic_dec_unless_positive(atomic_t *v)
 #define _arch_atomic_dec_if_positive(_prev, _rc, counter, sfx)		\
 ({									\
 	__asm__ __volatile__ (						\
-		"0:	lr." sfx "     %[p],  %[c]\n"			\
+		"0:	l" sfx "       %[p],  %[c]\n"			\
 		"	addi           %[rc], %[p], -1\n"		\
 		"	bltz           %[rc], 1f\n"			\
-		"	sc." sfx ".rl  %[rc], %[rc], %[c]\n"		\
-		"	bnez           %[rc], 0b\n"			\
+		"	s" sfx "       %[rc], %[c]\n"			\
 		"	fence          rw, rw\n"			\
 		"1:\n"							\
 		: [p]"=&r" (_prev), [rc]"=&r" (_rc), [c]"+A" (counter)	\
