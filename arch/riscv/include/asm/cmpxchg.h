@@ -22,11 +22,10 @@
 									\
 	__asm__ __volatile__ (						\
 	       prepend							\
-	       "0:	lr.w %0, %2\n"					\
+	       "0:	lw   %0, %2\n"					\
 	       "	and  %1, %0, %z4\n"				\
 	       "	or   %1, %1, %z3\n"				\
-	       "	sc.w" sc_sfx " %1, %1, %2\n"			\
-	       "	bnez %1, 0b\n"					\
+	       "	sw   %1, %1, %2\n"				\
 	       append							\
 	       : "=&r" (__retx), "=&r" (__rc), "+A" (*(__ptr32b))	\
 	       : "rJ" (__newx), "rJ" (~__mask)				\
@@ -117,13 +116,12 @@
 									\
 	__asm__ __volatile__ (						\
 		prepend							\
-		"0:	lr.w %0, %2\n"					\
+		"0:	lw   %0, %2\n"					\
 		"	and  %1, %0, %z5\n"				\
 		"	bne  %1, %z3, 1f\n"				\
 		"	and  %1, %0, %z6\n"				\
 		"	or   %1, %1, %z4\n"				\
-		"	sc.w" sc_sfx " %1, %1, %2\n"			\
-		"	bnez %1, 0b\n"					\
+		"	sw   %1, %2\n"					\
 		append							\
 		"1:\n"							\
 		: "=&r" (__retx), "=&r" (__rc), "+A" (*(__ptr32b))	\
@@ -140,10 +138,9 @@
 									\
 	__asm__ __volatile__ (						\
 		prepend							\
-		"0:	lr" lr_sfx " %0, %2\n"				\
+		"0:	l" lr_sfx " %0, %2\n"				\
 		"	bne  %0, %z3, 1f\n"				\
-		"	sc" sc_sfx " %1, %z4, %2\n"			\
-		"	bnez %1, 0b\n"					\
+		"	s" sc_sfx " %z4, %2\n"				\
 		append							\
 		"1:\n"							\
 		: "=&r" (r), "=&r" (__rc), "+A" (*(p))			\
@@ -165,11 +162,11 @@
 					__ret, __ptr, __old, __new);	\
 		break;							\
 	case 4:								\
-		__arch_cmpxchg(".w", ".w" sc_sfx, prepend, append,	\
+		__arch_cmpxchg("w", "w", prepend, append,	\
 				__ret, __ptr, (long), __old, __new);	\
 		break;							\
 	case 8:								\
-		__arch_cmpxchg(".d", ".d" sc_sfx, prepend, append,	\
+		__arch_cmpxchg("d", "d", prepend, append,	\
 				__ret, __ptr, /**/, __old, __new);	\
 		break;							\
 	default:							\
