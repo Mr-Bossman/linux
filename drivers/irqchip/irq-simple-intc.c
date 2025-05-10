@@ -22,6 +22,7 @@
 
 #define MAX_IRQ_NUM	512
 
+#define CSR_MEICONTEXT 0xbe5
 #define CSR_MEINEXT 0xbe4
 #define CSR_MEIEA 0xbe0
 
@@ -49,6 +50,7 @@ static void simple_intc_mask(struct irq_data *d)
 	uint32_t mask = BIT(d->hwirq % 16);
 
 	raw_spin_lock(&irqc->lock);
+
 	csr_clear(CSR_MEIEA, index | (mask << 16));
 	raw_spin_unlock(&irqc->lock);
 }
@@ -78,13 +80,29 @@ static void simple_intc_irq_handler(struct irq_desc *desc)
 	struct simple_irq_chip *irqc = irq_data_get_irq_handler_data(&desc->irq_data);
 	struct irq_chip *chip = irq_desc_get_chip(desc);
 	int hwirq;
+	int meicontext;
+
+	meicontext = csr_read_set(CSR_MEICONTEXT,0x02); // save the meicontext register and disable parent interrupts
 
 	chained_irq_enter(chip, desc);
-	hwirq = (csr_read_set(CSR_MEINEXT, 0x1) >> 2) & 0x1ff;
-
-	generic_handle_domain_irq(irqc->domain, hwirq);
-
+	while ((hwirq = csr_read(CSR_MEINEXT)) >= 0) {
+		hwirq = ((hwirq) >> 2) & 0x1ff;
+		generic_handle_domain_irq(irqc->domain, hwirq);
+	}
 	chained_irq_exit(chip, desc);
+
+	// to restore the 3-level preemtion-stack the following should work:
+	//
+	// csr_write(CSR_MEICONTEXT, meicontext);
+	//
+	// but it doesn't work always, so we have to do a workaround for now to restore the preemption stack
+	// something between here and the mret instruction clears bit 0 of the meicontext register
+	// this happens when other traps are taken in the meantime
+
+	int ppreempt = ((meicontext >> 28) & 0xf) << 24; 			// extract new ppreempt level
+	int preempt = ((meicontext >> 24) & 0xf) << 16; 			// extract new preemptrob level
+	int parentirq = meicontext & 0xc; 							// extract disabled parent interrupts
+	csr_write(CSR_MEICONTEXT, ppreempt | preempt | parentirq); 	// write back the meicontext register
 }
 
 static int __init simple_intc_init(struct device_node *intc,
