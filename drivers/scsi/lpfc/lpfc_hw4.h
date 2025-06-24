@@ -4926,12 +4926,20 @@ struct lpfc_els_rdf_reg_desc {
 };
 
 struct lpfc_els_rdf_req {
-	struct fc_els_rdf_hdr		rdf;	   /* hdr up to descriptors */
+	struct {
+		__u8		fpin_cmd;	/* command (0x19) */
+		__u8		fpin_zero[3];	/* specified as zero - part of cmd */
+		__be32		desc_len;	/* Length of Descriptor List (in bytes) */
+	} rdf;	   /* hdr up to descriptors */
 	struct lpfc_els_rdf_reg_desc	reg_d1;	/* 1st descriptor */
 };
 
 struct lpfc_els_rdf_rsp {
-	struct fc_els_rdf_resp_hdr	rdf_resp;  /* hdr up to descriptors */
+	struct {
+		struct fc_els_ls_acc	acc_hdr;
+		__be32			desc_list_len;	/* Length of response (in bytes) */
+		struct fc_els_lsri_desc	lsri;
+	} rdf_resp;  /* hdr up to descriptors */
 	struct lpfc_els_rdf_reg_desc	reg_d1;	/* 1st descriptor */
 };
 
