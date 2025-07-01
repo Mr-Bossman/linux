@@ -453,7 +453,9 @@ out:
 static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 {
 	struct nvme_ns *best_opt = NULL, *best_nonopt = NULL, *ns;
-	unsigned int min_depth_opt = UINT_MAX, min_depth_nonopt = UINT_MAX;
+	int min_depth_opt = INT_MAX, min_depth_nonopt = INT_MAX;
+	bool opt_is_marginal = true, nonopt_is_marginal = true, marginal;
+
 	unsigned int depth;
 
 	list_for_each_entry_srcu(ns, &head->list, siblings,
@@ -462,27 +464,39 @@ static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 			continue;
 
 		depth = atomic_read(&ns->ctrl->nr_active);
+		marginal = nvme_ctrl_is_marginal(ns->ctrl);
 
 		switch (ns->ana_state) {
 		case NVME_ANA_OPTIMIZED:
-			if (depth < min_depth_opt) {
+			if (is_best_distance(opt_is_marginal, marginal,
+					     min_depth_opt, depth)) {
 				min_depth_opt = depth;
 				best_opt = ns;
+				opt_is_marginal = marginal;
 			}
 			break;
 		case NVME_ANA_NONOPTIMIZED:
-			if (depth < min_depth_nonopt) {
+			if (is_best_distance(nonopt_is_marginal, marginal,
+					     min_depth_nonopt, depth)) {
 				min_depth_nonopt = depth;
 				best_nonopt = ns;
+				nonopt_is_marginal = marginal;
 			}
 			break;
 		default:
 			break;
 		}
 
-		if (min_depth_opt == 0)
+		if (min_depth_opt == 0 && !opt_is_marginal)
 			return best_opt;
 	}
+
+	/*
+	 * Prefer non-marginal non-optimized path
+	 * over a marginal optimized path.
+	 */
+	if (opt_is_marginal && !nonopt_is_marginal && best_nonopt)
+		return best_nonopt;
 
 	return best_opt ? best_opt : best_nonopt;
 }
