@@ -25,6 +25,7 @@ ccflags-$(GCOV) := -fprofile-arcs -ftest-coverage
 ccflags-$(GCOV) += -O0
 
 ifdef WARNINGS_BECOME_ERRORS
+ccflags-y += -Wflex-array-member-not-at-end
 ccflags-y += -Werror
 endif
 
