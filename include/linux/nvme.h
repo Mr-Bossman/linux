@@ -28,6 +28,9 @@
 /* Special NSSR value, 'NVMe' */
 #define NVME_SUBSYS_RESET	0x4E564D65
 
+/* Maximum number of reserved commands for Cancel */
+#define NVME_RSV_CANCEL_MAX     2
+
 enum nvme_subsys_type {
 	/* Referral to another discovery type target subsystem */
 	NVME_NQN_DISC	= 1,
@@ -967,6 +970,7 @@ enum nvme_opcode {
 	nvme_cmd_resv_acquire	= 0x11,
 	nvme_cmd_io_mgmt_recv	= 0x12,
 	nvme_cmd_resv_release	= 0x15,
+	nvme_cmd_cancel		= 0x18,
 	nvme_cmd_zone_mgmt_send	= 0x79,
 	nvme_cmd_zone_mgmt_recv	= 0x7a,
 	nvme_cmd_zone_append	= 0x7d,
@@ -1538,6 +1542,22 @@ struct nvme_abort_cmd {
 	__u32			rsvd11[5];
 };
 
+struct nvme_cancel_cmd {
+	__u8			opcode;
+	__u8			flags;
+	__u16			command_id;
+	__le32			nsid;
+	__u32                   rsvd1[8];
+	__le16			sqid;
+	__u16			cid;
+	__u8			action;
+	__u8			rsvd11[3];
+	__u32			rsvd12[4];
+};
+
+#define NVME_CANCEL_ACTION_MUL_CMD	1
+#define NVME_CANCEL_ACTION_SINGLE_CMD	0
+
 struct nvme_download_firmware {
 	__u8			opcode;
 	__u8			flags;
@@ -2005,6 +2025,7 @@ struct nvme_command {
 		struct nvme_zone_mgmt_send_cmd zms;
 		struct nvme_zone_mgmt_recv_cmd zmr;
 		struct nvme_abort_cmd abort;
+		struct nvme_cancel_cmd cancel;
 		struct nvme_get_log_page_command get_log_page;
 		struct nvmf_common_command fabrics;
 		struct nvmf_connect_command connect;
@@ -2188,6 +2209,7 @@ enum {
 	NVME_SC_INVALID_PI		= 0x181,
 	NVME_SC_READ_ONLY		= 0x182,
 	NVME_SC_CMD_SIZE_LIM_EXCEEDED	= 0x183,
+	NVME_SC_INVALID_CID             = 0x184,
 
 	/*
 	 * I/O Command Set Specific - Fabrics commands:
