@@ -3455,6 +3455,49 @@ int nvme_submit_cancel_req(struct nvme_ctrl *ctrl, struct request *rq,
 }
 EXPORT_SYMBOL_GPL(nvme_submit_cancel_req);
 
+static enum rq_end_io_ret abort_endio(struct request *req, blk_status_t error,
+					const struct io_comp_batch *iob)
+{
+	struct nvme_ctrl *ctrl = req->end_io_data;
+
+	dev_warn(ctrl->device, "Abort status: 0x%x", nvme_req(req)->status);
+	atomic_inc(&ctrl->abort_limit);
+	blk_mq_free_request(req);
+	return RQ_END_IO_NONE;
+}
+
+int nvme_submit_abort_req(struct nvme_ctrl *ctrl, struct request *rq,
+				unsigned int sqid)
+{
+	struct nvme_command c = { };
+	struct request *abort_req;
+
+	c.abort.opcode = nvme_admin_abort_cmd;
+	c.abort.cid = nvme_cid(rq);
+	c.abort.sqid = sqid;
+
+	if (atomic_dec_return(&ctrl->abort_limit) < 0) {
+		atomic_inc(&ctrl->abort_limit);
+		return -EBUSY;
+	}
+
+	abort_req = blk_mq_alloc_request(ctrl->admin_q, nvme_req_op(&c),
+					BLK_MQ_REQ_NOWAIT);
+	if (IS_ERR(abort_req)) {
+		atomic_inc(&ctrl->abort_limit);
+		return PTR_ERR(abort_req);
+	}
+
+	nvme_init_request(abort_req, &c);
+
+	abort_req->end_io = abort_endio;
+	abort_req->end_io_data = ctrl;
+
+	blk_execute_rq_nowait(abort_req, false);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nvme_submit_abort_req);
+
 static int nvme_get_effects_log(struct nvme_ctrl *ctrl, u8 csi,
 				struct nvme_effects_log **log)
 {

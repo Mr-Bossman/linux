@@ -997,6 +997,8 @@ int nvme_get_log(struct nvme_ctrl *ctrl, u32 nsid, u8 log_page, u8 lsp, u8 csi,
 		void *log, size_t size, u64 offset);
 int nvme_submit_cancel_req(struct nvme_ctrl *ctrl, struct request *rq,
 			       unsigned int sqid, int action);
+int nvme_submit_abort_req(struct nvme_ctrl *ctrl, struct request *rq,
+				unsigned int sqid);
 bool nvme_tryget_ns_head(struct nvme_ns_head *head);
 void nvme_put_ns_head(struct nvme_ns_head *head);
 int nvme_cdev_add(const char *name, struct cdev *cdev,

@@ -1809,18 +1809,6 @@ static int adapter_delete_sq(struct nvme_dev *dev, u16 sqid)
 	return adapter_delete_queue(dev, nvme_admin_delete_sq, sqid);
 }
 
-static enum rq_end_io_ret abort_endio(struct request *req, blk_status_t error,
-				      const struct io_comp_batch *iob)
-{
-	struct nvme_queue *nvmeq = req->mq_hctx->driver_data;
-
-	dev_warn(nvmeq->dev->ctrl.device,
-		 "Abort status: 0x%x", nvme_req(req)->status);
-	atomic_inc(&nvmeq->dev->ctrl.abort_limit);
-	blk_mq_free_request(req);
-	return RQ_END_IO_NONE;
-}
-
 static bool nvme_should_reset(struct nvme_dev *dev, u32 csts)
 {
 	/* If true, indicates loss of adapter communication, possibly by a
@@ -1877,11 +1865,10 @@ static enum blk_eh_timer_return nvme_timeout(struct request *req)
 	struct nvme_iod *iod = blk_mq_rq_to_pdu(req);
 	struct nvme_queue *nvmeq = req->mq_hctx->driver_data;
 	struct nvme_dev *dev = nvmeq->dev;
-	struct request *abort_req;
-	struct nvme_command cmd = { };
 	struct pci_dev *pdev = to_pci_dev(dev->dev);
 	u32 csts = readl(dev->bar + NVME_REG_CSTS);
 	u8 opcode;
+	int r;
 
 	/*
 	 * Shutdown the device immediately if we see it is disconnected. This
@@ -1968,11 +1955,6 @@ static enum blk_eh_timer_return nvme_timeout(struct request *req)
 		atomic_inc(&dev->ctrl.abort_limit);
 		return BLK_EH_RESET_TIMER;
 	}
-	iod->flags |= IOD_ABORTED;
-
-	cmd.abort.opcode = nvme_admin_abort_cmd;
-	cmd.abort.cid = nvme_cid(req);
-	cmd.abort.sqid = cpu_to_le16(nvmeq->qid);
 
 	dev_warn(nvmeq->dev->ctrl.device,
 		 "I/O tag %d (%04x) opcode %#x (%s) QID %d timeout, aborting req_op:%s(%u) size:%u\n",
@@ -1980,17 +1962,11 @@ static enum blk_eh_timer_return nvme_timeout(struct request *req)
 		 nvmeq->qid, blk_op_str(req_op(req)), req_op(req),
 		 blk_rq_bytes(req));
 
-	abort_req = blk_mq_alloc_request(dev->ctrl.admin_q, nvme_req_op(&cmd),
-					 BLK_MQ_REQ_NOWAIT);
-	if (IS_ERR(abort_req)) {
-		atomic_inc(&dev->ctrl.abort_limit);
+	r = nvme_submit_abort_req(&dev->ctrl, req, cpu_to_le16(nvmeq->qid));
+	if (r == -EBUSY)
 		return BLK_EH_RESET_TIMER;
-	}
-	nvme_init_request(abort_req, &cmd);
 
-	abort_req->end_io = abort_endio;
-	abort_req->end_io_data = NULL;
-	blk_execute_rq_nowait(abort_req, false);
+	iod->flags |= IOD_ABORTED;
 
 	/*
 	 * The aborted req will be completed on receiving the abort req.
