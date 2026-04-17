@@ -141,10 +141,121 @@ flowchart TD
 
 ---
 
+## `nvmet_destroy_namespace()` call graph
+
+`nvmet_destroy_namespace()` is the **`percpu_ref` release callback** registered when the namespace is enabled. The function body only completes a **`struct completion`**; the interesting structure is *who* waits and *who* drops the last reference.
+
+### Direct callees (from the function itself)
+
+```465:470:drivers/nvme/target/core.c
+static void nvmet_destroy_namespace(struct percpu_ref *ref)
+{
+	struct nvmet_ns *ns = container_of(ref, struct nvmet_ns, ref);
+
+	complete(&ns->disable_done);
+}
+```
+
+So the explicit call graph is:
+
+```mermaid
+flowchart LR
+  nvmet_destroy_namespace --> complete
+  complete["complete(&ns->disable_done)"]
+```
+
+### How execution reaches `nvmet_destroy_namespace()`
+
+1. **`percpu_ref_init(&ns->ref, nvmet_destroy_namespace, …)`** installs the release function when the namespace is enabled (`nvmet_ns_enable()`).
+2. **`percpu_ref_kill(&ns->ref)`** in **`nvmet_ns_disable()`** starts teardown: no new live references via **`percpu_ref_tryget_live()`**, and the refcount is driven toward zero as existing **`percpu_ref_put()`** calls drain.
+3. When the refcount reaches **zero**, the **`percpu_ref`** implementation invokes the release callback — here **`nvmet_destroy_namespace()`** (see **`percpu_ref_put_many()`** in **`include/linux/percpu-refcount.h`**: on atomic zero, `ref->data->release(ref)`).
+
+Typical **`percpu_ref_put(&ns->ref)`** paths in nvmet come from **`nvmet_put_namespace()`**, which is called when a request that held a namespace reference finishes or is uninited:
+
+```472:475:drivers/nvme/target/core.c
+void nvmet_put_namespace(struct nvmet_ns *ns)
+{
+	percpu_ref_put(&ns->ref);
+}
+```
+
+```802:806:drivers/nvme/target/core.c
+	if (pc_ref)
+		nvmet_pr_put_ns_pc_ref(pc_ref);
+	if (ns)
+		nvmet_put_namespace(ns);
+}
+```
+
+```1257:1264:drivers/nvme/target/core.c
+void nvmet_req_uninit(struct nvmet_req *req)
+{
+	percpu_ref_put(&req->sq->ref);
+	if (req->pc_ref)
+		nvmet_pr_put_ns_pc_ref(req->pc_ref);
+	if (req->ns)
+		nvmet_put_namespace(req->ns);
+}
+```
+
+### End-to-end: disable path vs in-flight I/O
+
+**Concurrently** with **`nvmet_ns_disable()`**, any I/O that already called **`percpu_ref_get`** (via **`nvmet_req_find_ns()`**) eventually **`percpu_ref_put`**s in **`nvmet_put_namespace()`**. When **`percpu_ref_kill`** has already been called, the **last** **`put`** drives the refcount to zero and invokes the release callback.
+
+```mermaid
+flowchart TD
+  disable["nvmet_ns_disable()"] --> mark["ns->enabled = false; xa_clear_mark …"]
+  mark --> kill["percpu_ref_kill(&ns->ref)"]
+  kill --> srcu["synchronize_rcu()"]
+  srcu --> wait["wait_for_completion(&ns->disable_done)"]
+  io["nvmet_req_find_ns → percpu_ref_get"] --> work["… processing …"]
+  work --> put["nvmet_put_namespace → percpu_ref_put"]
+  put --> last{"last put after kill?"}
+  last -->|"no"| other["other references still held"]
+  last -->|"yes"| rel["nvmet_destroy_namespace()"]
+  rel --> wake["complete(&ns->disable_done)"]
+  wake -.->|"wakes waiter"| wait
+  wait --> exitref["percpu_ref_exit(&ns->ref); nvmet_pr_exit_ns?; nvmet_ns_dev_disable …"]
+```
+
+The comment above **`wait_for_completion()`** in **`nvmet_ns_disable()`** states the intent: after the namespace is removed from the enabled lookup path, **`percpu_ref_kill()`** plus **`synchronize_rcu()`** and waiting for the refcount to drain ensures no lingering use of the namespace remains before further teardown (`percpu_ref_exit`, PR exit, device disable, etc.).
+
+```651:662:drivers/nvme/target/core.c
+	/*
+	 * Now that we removed the namespaces from the lookup list, we
+	 * can kill the per_cpu ref and wait for any remaining references
+	 * to be dropped, as well as a RCU grace period for anyone only
+	 * using the namespace under rcu_read_lock().  Note that we can't
+	 * use call_rcu here as we need to ensure the namespaces have
+	 * been fully destroyed before unloading the module.
+	 */
+	percpu_ref_kill(&ns->ref);
+	synchronize_rcu();
+	wait_for_completion(&ns->disable_done);
+	percpu_ref_exit(&ns->ref);
+```
+
+---
+
+## How `complete(&ns->disable_done)` works
+
+**`struct completion`** (see **`include/linux/completion.h`**) is a small synchronization primitive: a counter **`done`** and a simple wait queue. **`init_completion(&ns->disable_done)`** runs when the **`nvmet_ns`** is allocated and sets **`done = 0`** (not yet completed).
+
+- **`wait_for_completion(&ns->disable_done)`** (in **`nvmet_ns_disable()`**) blocks the caller until the completion is signaled.
+- **`complete(&ns->disable_done)`** (in **`nvmet_destroy_namespace()`**) marks the event and **wakes** any task sleeping in **`wait_for_completion()`**.
+
+So **`disable_done`** is a **handshake**: **`nvmet_ns_disable()`** must not run **`percpu_ref_exit()`** or tear down backing devices until it knows the **`percpu_ref`** has reached zero and the release callback has finished. The callback only **`complete()`**s; **`nvmet_ns_disable()`** performs **`percpu_ref_exit()`**, optional **`nvmet_pr_exit_ns()`**, **`nvmet_ns_dev_disable()`**, and the rest **after** **`wait_for_completion()`** returns.
+
+This is the standard kernel pattern **“wait in the destructor path until the refcount release callback runs”**, using a completion as the one-shot signal between the last **`percpu_ref_put()`** and the thread that called **`percpu_ref_kill()`**.
+
+---
+
 ## Reference paths
 
 - `drivers/nvme/target/io-cmd-cancel.c` — `nvmet_execute_cancel()`
-- `drivers/nvme/target/core.c` — `nvmet_execute_request()`, `nvmet_req_complete()`, `xa_init_flags` for `outstanding_requests`
-- `drivers/nvme/target/nvmet.h` — `struct nvmet_sq` / `outstanding_requests`
+- `drivers/nvme/target/core.c` — `nvmet_execute_request()`, `nvmet_req_complete()`, `xa_init_flags` for `outstanding_requests`, `nvmet_destroy_namespace()`, `nvmet_ns_disable()`, `nvmet_put_namespace()`
+- `drivers/nvme/target/nvmet.h` — `struct nvmet_sq` / `outstanding_requests`, `struct nvmet_ns` / `disable_done`
+- `include/linux/completion.h` — `struct completion`, `init_completion()`, `complete()`, `wait_for_completion()`
+- `include/linux/percpu-refcount.h` — `percpu_ref_init()`, `percpu_ref_kill()`, `percpu_ref_put()`
 
 Base comparison: `git log --oneline johnm/nvme-7.1..nvme-cancel-lsfmm_2`
