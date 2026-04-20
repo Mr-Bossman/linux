@@ -316,6 +316,7 @@ struct nvmet_ctrl {
 #ifdef CONFIG_NVME_TARGET_DELAY_REQUESTS
 	atomic_t		delay_count;
 	u32			delay_msec;
+	u8			delay_opcode;
 #endif
 	struct nvmet_pr_log_mgr pr_log_mgr;
 };

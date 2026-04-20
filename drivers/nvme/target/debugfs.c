@@ -159,7 +159,7 @@ static int nvmet_ctrl_delay_show(struct seq_file *m, void *p)
 	struct nvmet_ctrl *ctrl = m->private;
 	int delay_count = atomic_read(&ctrl->delay_count);
 
-	seq_printf(m, "%u %u\n", delay_count, ctrl->delay_msec);
+	seq_printf(m, "%u %u %x\n", delay_count, ctrl->delay_msec, ctrl->delay_opcode);
 	return 0;
 }
 
@@ -171,6 +171,7 @@ static ssize_t nvmet_ctrl_delay_write(struct file *file, const char __user *buf,
 	char delay_buf[22] = {};
 	int delay_count;
 	int delay_msec;
+	int delay_opcode;
 	int n;
 
 	if (count >= sizeof(delay_buf))
@@ -178,12 +179,14 @@ static ssize_t nvmet_ctrl_delay_write(struct file *file, const char __user *buf,
 	if (copy_from_user(delay_buf, buf, count))
 		return -EFAULT;
 
-	n = sscanf(delay_buf, "%u %u", &delay_count, &delay_msec);
-	if (n < 1 || n > 2)
+	n = sscanf(delay_buf, "%u %u %x", &delay_count, &delay_msec, &delay_opcode);
+	if (n < 1 || n > 3)
 		return -EINVAL;
-	if (n == 2)
+	if (n == 3) {
 		ctrl->delay_msec = delay_msec;
-	atomic_set(&ctrl->delay_count, delay_count);
+		ctrl->delay_opcode = (u8) delay_opcode;
+		atomic_set(&ctrl->delay_count, delay_count);
+	}
 	return count;
 }
 NVMET_DEBUGFS_RW_ATTR(nvmet_ctrl_delay);
