@@ -561,6 +561,28 @@ config RISCV_ISA_C
 
 	  If you don't know what to do here, say Y.
 
+config RISCV_ISA_ZAAMO
+	bool
+
+config RISCV_ISA_ZALRSC
+	bool
+
+choice
+	prompt "RISC-V Atomic support"
+	default RISCV_ISA_A
+
+config RISCV_ISA_A
+	bool "Using full A extension with both AMOs and LR/SC"
+	select RISCV_ISA_ZAAMO
+	select RISCV_ISA_ZALRSC
+	help
+	  This adds the full A extension to the ISA subset the toolchain is
+	  allowed to emit when building Linux. Most CPUs support the full A
+	  extension, but a kernel built with it will not run on systems without
+	  support.
+
+endchoice
+
 config RISCV_ISA_SUPM
 	bool "Supm extension for userspace pointer masking"
 	depends on 64BIT
@@ -684,6 +706,7 @@ config RISCV_ISA_ZABHA
 	bool "Zabha extension support for atomic byte/halfword operations"
 	depends on TOOLCHAIN_HAS_ZABHA
 	depends on RISCV_ALTERNATIVE
+	depends on RISCV_ISA_A
 	default y
 	help
 	  Enable the use of the Zabha ISA-extension to implement kernel
@@ -701,6 +724,7 @@ config TOOLCHAIN_HAS_ZACAS
 config RISCV_ISA_ZACAS
 	bool "Zacas extension support for atomic CAS"
 	depends on RISCV_ALTERNATIVE
+	depends on RISCV_ISA_A
 	default y
 	help
 	  Enable the use of the Zacas ISA-extension to implement kernel atomic
