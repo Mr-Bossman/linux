@@ -879,8 +879,8 @@ qla27xx_copy_multiple_pkt(struct scsi_qla_host *vha, void **pkt,
 		payload_size = sizeof(purex->els_frame_payload);
 	}
 
-	if (total_bytes > sizeof(item->iocb.iocb))
-		total_bytes = sizeof(item->iocb.iocb);
+	if (total_bytes > QLA_DEFAULT_PAYLOAD_SIZE)
+		total_bytes = QLA_DEFAULT_PAYLOAD_SIZE;
 
 	pending_bytes = total_bytes;
 	no_bytes = (pending_bytes > payload_size) ? payload_size :
@@ -1167,8 +1167,8 @@ qla27xx_copy_fpin_pkt(struct scsi_qla_host *vha, void **pkt,
 	total_bytes = (le16_to_cpu(purex->frame_size) & 0x0FFF)
 	    - PURX_ELS_HEADER_SIZE;
 
-	if (total_bytes > sizeof(item->iocb.iocb))
-		total_bytes = sizeof(item->iocb.iocb);
+	if (total_bytes > QLA_DEFAULT_PAYLOAD_SIZE)
+		total_bytes = QLA_DEFAULT_PAYLOAD_SIZE;
 
 	pending_bytes = total_bytes;
 	entry_count = entry_count_remaining = purex->entry_count;
