@@ -33,6 +33,18 @@ word_type notrace __cmpdi2(long long a, long long b);
 long long notrace __lshrdi3(long long u, word_type b);
 long long notrace __muldi3(long long u, long long v);
 word_type notrace __ucmpdi2(unsigned long long a, unsigned long long b);
+unsigned int notrace __udivsi3(unsigned int a, unsigned int b);
+unsigned long notrace __udivdi3(unsigned long a, unsigned long b);
+unsigned long notrace __udivti3(unsigned long long a, unsigned long long b);
+int notrace __divsi3(int a, int b);
+long notrace __divdi3(long a, long b);
+long long notrace __divti3(long long a, long long b);
+unsigned int notrace __umodsi3(unsigned int a, unsigned int b);
+unsigned long notrace __umoddi3(unsigned long a, unsigned long b);
+unsigned long notrace __umodti3(unsigned long long a, unsigned long long b);
+int notrace __modsi3(int a, int b);
+long notrace __moddi3(long a, long b);
+long long notrace __modti3(long long a, long long b);
 
 #ifdef CONFIG_HAVE_ARCH_LIBGCC_H
 #include <asm/libgcc.h>

@@ -615,6 +615,57 @@ config GENERIC_LIB_CMPDI2
 config GENERIC_LIB_UCMPDI2
 	bool
 
+config GENERIC_LIB_MODDIV
+	def_bool n
+
+config GENERIC_LIB_UDIVSI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_UDIVDI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_UDIVTI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_DIVSI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_DIVDI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_DIVTI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_UMODSI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_UMODDI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_UMODTI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_MODSI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_MODDI3
+	bool
+	select GENERIC_LIB_MODDIV
+
+config GENERIC_LIB_MODTI3
+	bool
+	select GENERIC_LIB_MODDIV
+
 config GENERIC_LIB_DEVMEM_IS_ALLOWED
 	bool
 
