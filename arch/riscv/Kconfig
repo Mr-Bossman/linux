@@ -163,7 +163,7 @@ config RISCV
 	select HAVE_FUNCTION_GRAPH_TRACER if HAVE_DYNAMIC_FTRACE_WITH_ARGS
 	select HAVE_FUNCTION_GRAPH_FREGS
 	select HAVE_FUNCTION_TRACER if HAVE_DYNAMIC_FTRACE
-	select HAVE_EBPF_JIT if MMU
+	select HAVE_EBPF_JIT if MMU && !RISCV_ISA_ZMMUL
 	select HAVE_GENERIC_TIF_BITS
 	select HAVE_GUP_FAST if MMU
 	select HAVE_FUNCTION_ARG_ACCESS_API
@@ -846,6 +846,32 @@ config RISCV_ISA_ZICBOP
 	  read/write fetch.
 
 	  If you don't know what to do here, say Y.
+
+config RISCV_ISA_M
+	def_bool y
+	depends on !RISCV_ISA_ZMMUL
+
+config RISCV_ISA_ZMMUL
+	bool "Zmmul extension only emit multiplication instructions, omit division"
+	depends on NONPORTABLE
+	select GENERIC_LIB_UDIVSI3
+	select GENERIC_LIB_UDIVDI3
+	select GENERIC_LIB_UDIVTI3 if 64BIT
+	select GENERIC_LIB_DIVSI3
+	select GENERIC_LIB_DIVDI3
+	select GENERIC_LIB_DIVTI3 if 64BIT
+	select GENERIC_LIB_UMODSI3
+	select GENERIC_LIB_UMODDI3
+	select GENERIC_LIB_UMODTI3 if 64BIT
+	select GENERIC_LIB_MODSI3
+	select GENERIC_LIB_MODDI3
+	select GENERIC_LIB_MODTI3 if 64BIT
+	default n
+	help
+	  Uses only the "Zmmul" subset if the "M" ISA subset when building
+	  Linux, which results in divisions, and remainders in being emulated
+
+	  If you don't know what to do here, say N.
 
 config RISCV_ISA_SVRSW60T59B
 	bool "Svrsw60t59b extension support for using PTE bits 60 and 59"

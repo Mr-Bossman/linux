@@ -81,10 +81,19 @@ int __init riscv_early_of_processor_hartid(struct device_node *node, unsigned lo
 	if (!of_property_present(node, "riscv,isa-extensions"))
 		return -ENODEV;
 
-	if (of_property_match_string(node, "riscv,isa-extensions", "i") < 0 ||
-	    of_property_match_string(node, "riscv,isa-extensions", "m") < 0 ||
-	    of_property_match_string(node, "riscv,isa-extensions", "a") < 0) {
-		pr_warn("CPU with hartid=%lu does not support ima", *hart);
+	if (of_property_match_string(node, "riscv,isa-extensions", "i") < 0) {
+		pr_warn("CPU with hartid=%lu does not support i", *hart);
+		return -ENODEV;
+	}
+
+	if (of_property_match_string(node, "riscv,isa-extensions", "m") < 0 &&
+	    of_property_match_string(node, "riscv,isa-extensions", "zmmul") < 0) {
+		pr_warn("CPU with hartid=%lu does not support m or zmmul", *hart);
+		return -ENODEV;
+	}
+
+	if (of_property_match_string(node, "riscv,isa-extensions", "a") < 0) {
+		pr_warn("CPU with hartid=%lu does not support a", *hart);
 		return -ENODEV;
 	}
 
