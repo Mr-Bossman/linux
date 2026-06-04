@@ -264,9 +264,17 @@ SYM_CODE_START(_start_kernel)
 	/* The lottery system is only required for spinwait booting method */
 	/* Pick one hart to run the main boot sequence */
 	la a3, hart_lottery
+#if defined(CONFIG_RISCV_ISA_ZAAMO)
 	li a2, 1
 	amoadd.w a3, a2, (a3)
 	bnez a3, .Lsecondary_start
+	amoadd.w a2, a2, (a3)
+#else /* defined(CONFIG_RISCV_ISA_ZALRSC) */
+1:	lr.w a2, (a3)
+	addi t0, a2, 1
+	sc.w t1, t0, (a3)
+	bnez t1, 1b
+#endif
 #endif /* CONFIG_RISCV_BOOT_SPINWAIT */
 
 	/* Clear BSS for flat non-ELF images */

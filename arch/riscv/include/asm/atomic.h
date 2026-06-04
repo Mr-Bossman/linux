@@ -45,6 +45,8 @@ static __always_inline void arch_atomic64_set(atomic64_t *v, s64 i)
 }
 #endif
 
+#ifdef CONFIG_RISCV_ISA_ZAAMO
+
 /*
  * First, the atomic ops that have no ordering constraints and therefore don't
  * have the AQ or RL bits set.  These don't return anything, so there's only
@@ -194,6 +196,12 @@ ATOMIC_OPS(xor, xor, i)
 
 #undef ATOMIC_FETCH_OP
 #undef ATOMIC_OP_RETURN
+
+#else
+
+#include <asm-generic/atomic.h>
+
+#endif /* CONFIG_RISCV_ISA_ZAAMO */
 
 #define _arch_atomic_fetch_add_unless(_prev, _rc, counter, _a, _u, sfx)	\
 ({									\

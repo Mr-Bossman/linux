@@ -56,13 +56,30 @@
 
 #define __arch_xchg(sfx, prepend, append, r, p, n)			\
 ({									\
-	__asm__ __volatile__ (						\
-		prepend							\
-		"	amoswap" sfx " %0, %2, %1\n"			\
-		append							\
-		: "=r" (r), "+A" (*(p))					\
-		: "r" (n)						\
-		: "memory");						\
+	if (IS_ENABLED(CONFIG_RISCV_ISA_ZAAMO)) {			\
+		r = o;							\
+									\
+		__asm__ __volatile__ (					\
+			prepend						\
+			"	amoswap" sfx " %0, %2, %1\n"		\
+			append						\
+			: "+&r" (r), "+A" (*(p))			\
+			: "rJ" (n)					\
+			: "memory");					\
+	} else {							\
+		register unsigned int __rc;				\
+									\
+		__asm__ __volatile__ (					\
+			prepend						\
+			"0:	lr" sfx " %0, %2\n"			\
+			"	sc" sfx " %1, %z3, %2\n"		\
+			"	bnez %1, 0b\n"				\
+			append						\
+			"1:\n"						\
+			: "=&r" (r), "=&r" (__rc), "+A" (*(p))		\
+			: "rJ" (n)					\
+			: "memory");					\
+	}								\
 })
 
 #define _arch_xchg(ptr, new, sc_sfx, swap_sfx, prepend,			\

@@ -581,6 +581,14 @@ config RISCV_ISA_A
 	  extension, but a kernel built with it will not run on systems without
 	  support.
 
+config RISCV_ISA_ZALRSC_ONLY
+	bool "Using only LR/SC instruction sequences"
+	select RISCV_ISA_ZALRSC
+	help
+	  This enables only the Zalrsc extension which may be available on
+	  simpler implementations if AMO instructions are not (e.g. low core
+	  count implementations).
+
 endchoice
 
 config RISCV_ISA_SUPM

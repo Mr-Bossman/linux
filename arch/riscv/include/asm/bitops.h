@@ -168,6 +168,8 @@ static __always_inline int variable_fls(unsigned int x)
 
 #include <asm-generic/bitops/const_hweight.h>
 
+#if defined(CONFIG_RISCV_ISA_ZAAMO)
+
 #if (BITS_PER_LONG == 64)
 #define __AMO(op)	"amo" #op ".d"
 #elif (BITS_PER_LONG == 32)
@@ -351,6 +353,11 @@ static __always_inline bool arch_xor_unlock_is_negative_byte(unsigned long mask,
 #undef __NOP
 #undef __NOT
 #undef __AMO
+
+#else /* !CONFIG_RISCV_ISA_ZAAMO */
+#include <asm-generic/bitops/lock.h>
+#include <asm-generic/bitops/atomic.h>
+#endif
 
 #include <asm-generic/bitops/instrumented-atomic.h>
 #include <asm-generic/bitops/instrumented-lock.h>
