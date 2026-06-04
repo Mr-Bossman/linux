@@ -19,8 +19,8 @@
 #define __disable_user_access()		do { } while (0)
 #endif
 
-#define __futex_atomic_op(insn, ret, oldval, uaddr, oparg)	\
-{								\
+#define __futex_atomic_amo_op(insn, ret, oldval, uaddr, oparg)	\
+do {								\
 	__enable_user_access();					\
 	__asm__ __volatile__ (					\
 	"1:	" insn "				\n"	\
@@ -31,7 +31,25 @@
 	: [op] "Jr" (oparg)					\
 	: "memory");						\
 	__disable_user_access();				\
-}
+} while (0)
+
+#define __futex_atomic_lrsc_op(insn, ret, oldval, uaddr, oparg)	\
+do {								\
+	int temp = 0;						\
+	__enable_user_access();					\
+	__asm__ __volatile__ (					\
+	"1:	lr.w.aqrl %[ov], %[u]			\n"	\
+	"	" insn "				\n"	\
+	"	sc.w.aqrl %[t], %[t], %[u]		\n"	\
+	"	bnez %[t], 1b				\n"	\
+	"2:						\n"	\
+	_ASM_EXTABLE_UACCESS_ERR(1b, 2b, %[r])			\
+	: [r] "+r" (ret), [ov] "=&r" (oldval),			\
+	  [t] "=&r" (temp), [u] "+m" (*(uaddr))			\
+	: [op] "Jr" (oparg)					\
+	: "memory");						\
+	__disable_user_access();				\
+} while (0)
 
 static inline int
 arch_futex_atomic_op_inuser(int op, int oparg, int *oval, u32 __user *uaddr)
@@ -41,29 +59,56 @@ arch_futex_atomic_op_inuser(int op, int oparg, int *oval, u32 __user *uaddr)
 	if (!access_ok(uaddr, sizeof(u32)))
 		return -EFAULT;
 
-	switch (op) {
-	case FUTEX_OP_SET:
-		__futex_atomic_op("amoswap.w.aqrl %[ov],%z[op],%[u]",
-				  ret, oldval, uaddr, oparg);
-		break;
-	case FUTEX_OP_ADD:
-		__futex_atomic_op("amoadd.w.aqrl %[ov],%z[op],%[u]",
-				  ret, oldval, uaddr, oparg);
-		break;
-	case FUTEX_OP_OR:
-		__futex_atomic_op("amoor.w.aqrl %[ov],%z[op],%[u]",
-				  ret, oldval, uaddr, oparg);
-		break;
-	case FUTEX_OP_ANDN:
-		__futex_atomic_op("amoand.w.aqrl %[ov],%z[op],%[u]",
-				  ret, oldval, uaddr, ~oparg);
-		break;
-	case FUTEX_OP_XOR:
-		__futex_atomic_op("amoxor.w.aqrl %[ov],%z[op],%[u]",
-				  ret, oldval, uaddr, oparg);
-		break;
-	default:
-		ret = -ENOSYS;
+	if (IS_ENABLED(CONFIG_RISCV_ISA_ZAAMO)) {
+		switch (op) {
+		case FUTEX_OP_SET:
+			__futex_atomic_amo_op("amoswap.w.aqrl %[ov],%z[op],%[u]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		case FUTEX_OP_ADD:
+			__futex_atomic_amo_op("amoadd.w.aqrl %[ov],%z[op],%[u]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		case FUTEX_OP_OR:
+			__futex_atomic_amo_op("amoor.w.aqrl %[ov],%z[op],%[u]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		case FUTEX_OP_ANDN:
+			__futex_atomic_amo_op("amoand.w.aqrl %[ov],%z[op],%[u]",
+					  ret, oldval, uaddr, ~oparg);
+			break;
+		case FUTEX_OP_XOR:
+			__futex_atomic_amo_op("amoxor.w.aqrl %[ov],%z[op],%[u]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		default:
+			ret = -ENOSYS;
+		}
+	} else {
+		switch (op) {
+		case FUTEX_OP_SET:
+			__futex_atomic_lrsc_op("mv %[t], %z[op]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		case FUTEX_OP_ADD:
+			__futex_atomic_lrsc_op("add %[t], %[ov], %z[op]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		case FUTEX_OP_OR:
+			__futex_atomic_lrsc_op("or %[t], %[ov], %z[op]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		case FUTEX_OP_ANDN:
+			__futex_atomic_lrsc_op("and %[t], %[ov], %z[op]",
+					  ret, oldval, uaddr, ~oparg);
+			break;
+		case FUTEX_OP_XOR:
+			__futex_atomic_lrsc_op("xor %[t], %[ov], %z[op]",
+					  ret, oldval, uaddr, oparg);
+			break;
+		default:
+			ret = -ENOSYS;
+		}
 	}
 
 	if (!ret)
