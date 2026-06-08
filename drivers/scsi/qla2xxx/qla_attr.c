@@ -2757,6 +2757,15 @@ qla2x00_set_rport_loss_tmo(struct fc_rport *rport, uint32_t timeout)
 					       rport->dev_loss_tmo);
 }
 
+static inline void
+qla2x00_set_rport_marginal(struct fc_rport *rport, bool marginal)
+{
+	fc_port_t *fcport = *(fc_port_t **)rport->dd_data;
+
+	if (IS_ENABLED(CONFIG_NVME_FC) && fcport && fcport->nvme_remote_port)
+		nvme_fc_set_remoteport_fpin(fcport->nvme_remote_port, marginal);
+}
+
 static void
 qla2x00_dev_loss_tmo_callbk(struct fc_rport *rport)
 {
@@ -3346,6 +3355,8 @@ struct fc_function_template qla2xxx_transport_functions = {
 	.set_rport_dev_loss_tmo = qla2x00_set_rport_loss_tmo,
 	.show_rport_dev_loss_tmo = 1,
 
+	.set_rport_marginal = qla2x00_set_rport_marginal,
+
 	.issue_fc_host_lip = qla2x00_issue_lip,
 	.dev_loss_tmo_callbk = qla2x00_dev_loss_tmo_callbk,
 	.terminate_rport_io = qla2x00_terminate_rport_io,
@@ -3393,6 +3404,8 @@ struct fc_function_template qla2xxx_transport_vport_functions = {
 
 	.set_rport_dev_loss_tmo = qla2x00_set_rport_loss_tmo,
 	.show_rport_dev_loss_tmo = 1,
+
+	.set_rport_marginal = qla2x00_set_rport_marginal,
 
 	.issue_fc_host_lip = qla2x00_issue_lip,
 	.dev_loss_tmo_callbk = qla2x00_dev_loss_tmo_callbk,
