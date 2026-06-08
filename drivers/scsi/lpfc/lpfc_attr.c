@@ -7134,6 +7134,30 @@ lpfc_set_rport_loss_tmo(struct fc_rport *rport, uint32_t timeout)
 #endif
 }
 
+static void
+lpfc_set_rport_marginal(struct fc_rport *rport, bool marginal)
+{
+	struct lpfc_rport_data *rdata = rport->dd_data;
+	struct lpfc_nodelist *ndlp = rdata->pnode;
+	struct lpfc_nvme_rport *nrport = NULL;
+
+	/* Break early if NVME_FC is not enabled */
+	if (!IS_ENABLED(CONFIG_NVME_FC))
+		return;
+
+	if (!ndlp) {
+		dev_info(&rport->dev, "Cannot find remote node to "
+				      "set rport dev loss tmo, port_id x%x\n",
+				      rport->port_id);
+		return;
+	}
+
+	nrport = lpfc_ndlp_get_nrport(ndlp);
+
+	if (nrport && nrport->remoteport)
+		nvme_fc_set_remoteport_fpin(nrport->remoteport, marginal);
+}
+
 /*
  * lpfc_rport_show_function - Return rport target information
  *
@@ -7244,6 +7268,8 @@ struct fc_function_template lpfc_transport_functions = {
 	.set_rport_dev_loss_tmo = lpfc_set_rport_loss_tmo,
 	.show_rport_dev_loss_tmo = 1,
 
+	.set_rport_marginal = lpfc_set_rport_marginal,
+
 	.get_starget_port_id  = lpfc_get_starget_port_id,
 	.show_starget_port_id = 1,
 
@@ -7314,6 +7340,8 @@ struct fc_function_template lpfc_vport_transport_functions = {
 
 	.set_rport_dev_loss_tmo = lpfc_set_rport_loss_tmo,
 	.show_rport_dev_loss_tmo = 1,
+
+	.set_rport_marginal = lpfc_set_rport_marginal,
 
 	.get_starget_port_id  = lpfc_get_starget_port_id,
 	.show_starget_port_id = 1,
