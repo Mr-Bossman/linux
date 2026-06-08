@@ -684,6 +684,7 @@ struct fc_host_attrs {
 struct fc_function_template {
 	void    (*get_rport_dev_loss_tmo)(struct fc_rport *);
 	void	(*set_rport_dev_loss_tmo)(struct fc_rport *, u32);
+	void	(*set_rport_marginal)(struct fc_rport *rport, bool marginal);
 
 	void	(*get_starget_node_name)(struct scsi_target *);
 	void	(*get_starget_port_name)(struct scsi_target *);

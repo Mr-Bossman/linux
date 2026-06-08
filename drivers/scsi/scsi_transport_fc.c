@@ -648,7 +648,8 @@ fc_find_rport_by_wwpn(struct Scsi_Host *shost, u64 wwpn)
 	spin_lock_irqsave(shost->host_lock, flags);
 
 	list_for_each_entry(rport, &fc_host_rports(shost), peers) {
-		if (rport->port_state != FC_PORTSTATE_ONLINE)
+		if (rport->port_state != FC_PORTSTATE_ONLINE &&
+		    rport->port_state != FC_PORTSTATE_MARGINAL)
 			continue;
 
 		if (rport->port_name == wwpn) {
@@ -737,6 +738,25 @@ fc_cn_stats_update(u16 event_type, struct fc_fpin_stats *stats)
 	}
 }
 
+static void fc_fpin_set_marginal(struct Scsi_Host *shost, struct fc_rport *rport)
+{
+	struct fc_internal *i = to_fc_internal(shost->transportt);
+	unsigned long flags;
+
+	spin_lock_irqsave(shost->host_lock, flags);
+
+	if (rport->port_state == FC_PORTSTATE_ONLINE &&
+	    rport->roles & FC_PORT_ROLE_NVME_TARGET) {
+		rport->port_state = FC_PORTSTATE_MARGINAL;
+		if (i->f->set_rport_marginal)
+			i->f->set_rport_marginal(rport, true);
+		spin_unlock_irqrestore(shost->host_lock, flags);
+		return;
+	}
+
+	spin_unlock_irqrestore(shost->host_lock, flags);
+}
+
 static void
 fc_fpin_pname_stats_update(struct Scsi_Host *shost,
 			   struct fc_rport *attach_rport, u16 event_type,
@@ -764,6 +784,10 @@ fc_fpin_pname_stats_update(struct Scsi_Host *shost,
 			if (rport == attach_rport)
 				continue;
 			stats_update(event_type, &rport->fpin_stats);
+
+			/* Only set marginal if we are updating li stats */
+			if (stats_update == fc_li_stats_update)
+				fc_fpin_set_marginal(shost, rport);
 		}
 	}
 }
