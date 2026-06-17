@@ -900,6 +900,20 @@ fc_fpin_congn_stats_update(struct Scsi_Host *shost,
 			   &fc_host->fpin_stats);
 }
 
+
+void fpin_dump_buffer(const void *buf, uint size);
+void fpin_dump_buffer(const void *buf, uint size)
+{
+	uint cnt;
+
+	pr_warn("%-+5d  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n", size);
+	pr_warn("----- -----------------------------------------------\n");
+	for (cnt = 0; cnt < size; cnt += 16) {
+		pr_warn("%04x: ", cnt);
+		print_hex_dump(KERN_CONT, "", DUMP_PREFIX_NONE, 16, 1,
+			       buf + cnt, min(16U, size - cnt), false);
+	}
+}
 /**
  * fc_host_fpin_rcv - routine to process a received FPIN.
  * @shost:		host the FPIN was received on
@@ -920,17 +934,24 @@ fc_host_fpin_rcv(struct Scsi_Host *shost, u32 fpin_len, char *fpin_buf,
 	enum fc_host_event_code event_code =
 		event_acknowledge ? FCH_EVT_LINK_FPIN_ACK : FCH_EVT_LINK_FPIN;
 
+	fpin_dump_buffer(fpin_buf, fpin_len);
 	/* Update Statistics */
 	tlv = &fpin->fpin_desc[0];
 	bytes_remain = fpin_len - offsetof(struct fc_els_fpin, fpin_desc);
 	bytes_remain = min_t(u32, bytes_remain, be32_to_cpu(fpin->desc_len));
-
+	pr_warn("%s: Got FPIN event", __func__);
+	pr_warn("%s: FPIN bytes_remain: %d", __func__, bytes_remain);
+	pr_warn("%s: FPIN FC_TLV_DESC_HDR_SZ: %ld", __func__, FC_TLV_DESC_HDR_SZ);
+	pr_warn("%s: FPIN FC_TLV_DESC_SZ_FROM_LENGTH: %ld", __func__, FC_TLV_DESC_SZ_FROM_LENGTH(tlv));
 	while (bytes_remain >= FC_TLV_DESC_HDR_SZ &&
 	       bytes_remain >= FC_TLV_DESC_SZ_FROM_LENGTH(tlv)) {
 		dtag = be32_to_cpu(tlv->hdr.desc_tag);
+		pr_warn("%s: Got FPIN event dtag: %x", __func__, dtag);
+		pr_warn("%s: expected FPIN event dtag: %x", __func__, ELS_DTAG_LNK_INTEGRITY);
 		switch (dtag) {
 		case ELS_DTAG_LNK_INTEGRITY:
 			fc_fpin_li_stats_update(shost, &tlv->li);
+			pr_warn("%s: Got FPIN link integrity event", __func__);
 			break;
 		case ELS_DTAG_DELIVERY:
 			fc_fpin_delivery_stats_update(shost, &tlv->deli);
