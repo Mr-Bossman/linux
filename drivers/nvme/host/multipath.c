@@ -291,6 +291,39 @@ static bool nvme_path_is_disabled(struct nvme_ns *ns)
 	return false;
 }
 
+/*
+ * Returns true if the new distance is better than the old one.
+ */
+static bool is_best_distance(bool found_is_marginal, bool marginal,
+			       int old_distance, int distance)
+{
+	if (found_is_marginal){
+		if(marginal) {
+			/*
+			 * A marginal path has already been found,
+			 * or this is the first path found.
+			 * This one is also marginal, but closer
+			 * to the NUMA node, so prefer it.
+			 */
+			if (distance < old_distance)
+				return true;
+		} else {
+			/* Found a non-marginal path, use it over a marginal one. */
+			return true;
+		}
+	} else {
+		/* A non-marginal path has already found. This one is marginal, so skip it. */
+		if (marginal)
+			return false;
+
+		/* Found a closer non-marginal path, use it. */
+		if (distance < old_distance)
+			return true;
+	}
+
+	return false;
+}
+
 static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 {
 	int found_distance = INT_MAX, fallback_distance = INT_MAX, distance;
@@ -310,65 +343,17 @@ static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 
 		switch (ns->ana_state) {
 		case NVME_ANA_OPTIMIZED:
-			if (found_is_marginal){
-				if(nvme_ctrl_is_marginal(ns->ctrl)) {
-					/*
-					 * A marginal path has already found,
-					 * or this is the first path found.
-					 * This one is also marginal, but closer
-					 * to the NUMA node, so prefer it.
-					 */
-					if (distance < found_distance) {
-						found_distance = distance;
-						found = ns;
-					}
-				} else {
-					/* Found a non-marginal path, use it over a marginal one. */
-					found_distance = distance;
-					found = ns;
-					found_is_marginal = false;
-				}
-			} else {
-				/* A non-marginal path has already found. This one is marginal, so skip it. */
-				if (nvme_ctrl_is_marginal(ns->ctrl))
-					continue;
-
-				/* Found a closer non-marginal path, use it. */
-				if (distance < found_distance) {
-					found_distance = distance;
-					found = ns;
-				}
+			if (is_best_distance(found_is_marginal, nvme_ctrl_is_marginal(ns->ctrl), found_distance, distance)) {
+				found_distance = distance;
+				found = ns;
+				found_is_marginal = nvme_ctrl_is_marginal(ns->ctrl);
 			}
 			break;
 		case NVME_ANA_NONOPTIMIZED:
-			if (fallback_is_marginal){
-				if(nvme_ctrl_is_marginal(ns->ctrl)) {
-					/*
-					 * A marginal path has already found,
-					 * or this is the first path found.
-					 * This one is also marginal, but closer
-					 * to the NUMA node, so prefer it.
-					 */
-					if (distance < fallback_distance) {
-						fallback_distance = distance;
-						fallback = ns;
-					}
-				} else {
-					/* Found a non-marginal path, use it over a marginal one. */
-					fallback_distance = distance;
-					fallback = ns;
-					fallback_is_marginal = false;
-				}
-			} else {
-				/* A non-marginal path has already found. This one is marginal, so skip it. */
-				if (nvme_ctrl_is_marginal(ns->ctrl))
-					continue;
-
-				/* Found a closer non-marginal path, use it. */
-				if (distance < fallback_distance) {
-					fallback_distance = distance;
-					fallback = ns;
-				}
+			if (is_best_distance(fallback_is_marginal, nvme_ctrl_is_marginal(ns->ctrl), fallback_distance, distance)) {
+				fallback_distance = distance;
+				fallback = ns;
+				fallback_is_marginal = nvme_ctrl_is_marginal(ns->ctrl);
 			}
 			break;
 		default:
