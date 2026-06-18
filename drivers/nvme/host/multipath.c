@@ -432,15 +432,15 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 		return __nvme_find_path(head, node);
 
 	if (list_is_singular(&head->list)) {
-		if (nvme_path_is_disabled(old))
-			return NULL;
-		return old;
+		if (nvme_path_is_usable(old))
+			return old;
+		return NULL;
 	}
 
 	for (ns = nvme_next_ns(head, old);
 	     ns && ns != old;
 	     ns = nvme_next_ns(head, ns)) {
-		if (nvme_path_is_disabled(ns))
+		if (!nvme_path_is_usable(ns))
 			continue;
 
 		if (ns->ana_state == NVME_ANA_OPTIMIZED) {
@@ -454,12 +454,16 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 	/*
 	 * The loop above skips the current path for round-robin semantics.
 	 * Fall back to the current path if either:
-	 *  - no other optimized path found and current is optimized,
+	 *  - no other optimized path found and current is optimized.
 	 *  - no other usable path found and current is usable.
 	 */
-	if (!nvme_path_is_disabled(old) &&
-	    (old->ana_state == NVME_ANA_OPTIMIZED ||
-	     (!found && old->ana_state == NVME_ANA_NONOPTIMIZED)))
+	/* no other usable path found and current is usable. */
+	if (nvme_path_is_usable(old) && !found)
+		return old;
+	/*
+	 *  - no other optimized path found and current is optimized.
+	 */
+	if (nvme_path_is_usable(old) && old->ana_state == NVME_ANA_OPTIMIZED)
 		return old;
 
 	if (!found)
