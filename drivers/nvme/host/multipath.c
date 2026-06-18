@@ -423,10 +423,11 @@ static struct nvme_ns *nvme_next_ns(struct nvme_ns_head *head,
 static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 	__must_hold_shared(&head->srcu)
 {
-	struct nvme_ns *ns, *found = NULL;
+	struct nvme_ns *ns, *found = NULL, *found_marg = NULL, *found_opt_marg = NULL;
 	int node = numa_node_id();
 	struct nvme_ns *old = srcu_dereference(head->current_path[node],
 					       &head->srcu);
+	bool marginal, all_marginal;
 
 	if (unlikely(!old))
 		return __nvme_find_path(head, node);
@@ -437,33 +438,64 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 		return NULL;
 	}
 
+	/* Initialize all_marginal with old as it is skiped in the loop. */
+	all_marginal = nvme_ctrl_is_marginal(old->ctrl);
+
 	for (ns = nvme_next_ns(head, old);
 	     ns && ns != old;
 	     ns = nvme_next_ns(head, ns)) {
 		if (!nvme_path_is_usable(ns))
 			continue;
 
+		marginal = nvme_ctrl_is_marginal(ns->ctrl);
+		/* Variable to keep track if all paths are marginal */
+		all_marginal &= marginal;
+
 		if (ns->ana_state == NVME_ANA_OPTIMIZED) {
-			found = ns;
+			if (marginal) {
+				found_opt_marg = ns;
+			} else {
+				found = ns;
+				goto out;
+			}
+		}
+		if (ns->ana_state == NVME_ANA_NONOPTIMIZED) {
+			if (marginal)
+				found_marg = ns;
+			else
+				found = ns;
+		}
+	}
+
+	/* Use marginal paths only if we need to use them */
+	if (all_marginal) {
+		if (found_opt_marg) {
+			found = found_opt_marg;
 			goto out;
 		}
-		if (ns->ana_state == NVME_ANA_NONOPTIMIZED)
-			found = ns;
+		found = found_marg;
 	}
 
 	/*
 	 * The loop above skips the current path for round-robin semantics.
 	 * Fall back to the current path if either:
-	 *  - no other optimized path found and current is optimized.
+	 *  - no other optimized path found and current is,
+	 *      optimized and not marginal.
+	 *  - no other non-marginal path found and current is,
+	 *      optimized and marginal.
 	 *  - no other usable path found and current is usable.
 	 */
 	/* no other usable path found and current is usable. */
 	if (nvme_path_is_usable(old) && !found)
 		return old;
 	/*
-	 *  - no other optimized path found and current is optimized.
+	 *  - no other optimized path found and current is,
+	 *      optimized and not marginal.
+	 *  - no other non-marginal path found and current is,
+	 *      optimized and marginal.
 	 */
-	if (nvme_path_is_usable(old) && old->ana_state == NVME_ANA_OPTIMIZED)
+	if (nvme_path_is_usable(old) && old->ana_state == NVME_ANA_OPTIMIZED &&
+	   (!nvme_ctrl_is_marginal(old->ctrl) || all_marginal))
 		return old;
 
 	if (!found)
