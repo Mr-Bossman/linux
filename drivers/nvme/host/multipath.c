@@ -389,6 +389,7 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 	int node = numa_node_id();
 	struct nvme_ns *old = srcu_dereference(head->current_path[node],
 					       &head->srcu);
+	bool need_marginal = nvme_all_paths_marginal(head);
 
 	if (unlikely(!old))
 		return __nvme_find_path(head, node);
@@ -405,6 +406,10 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 		if (nvme_path_is_disabled(ns))
 			continue;
 
+		/* Skip marginal paths unless we need to use them */
+		if (!need_marginal && nvme_ctrl_is_marginal(ns->ctrl))
+			continue;
+
 		if (ns->ana_state == NVME_ANA_OPTIMIZED) {
 			found = ns;
 			goto out;
@@ -416,12 +421,23 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 	/*
 	 * The loop above skips the current path for round-robin semantics.
 	 * Fall back to the current path if either:
-	 *  - no other optimized path found and current is optimized,
+	 *  - no other optimized path found and current is,
+	 *      optimized and not marginal.
+	 *  - no other non-marginal path found and current is,
+	 *      optimized and marginal.
 	 *  - no other usable path found and current is usable.
 	 */
-	if (!nvme_path_is_disabled(old) &&
-	    (old->ana_state == NVME_ANA_OPTIMIZED ||
-	     (!found && old->ana_state == NVME_ANA_NONOPTIMIZED)))
+	/* no other usable path found and current is usable. */
+	if (!nvme_path_is_disabled(old) && !found)
+		return old;
+	/*
+	 *  - no other optimized path found and current is,
+	 *      optimized and not marginal.
+	 *  - no other non-marginal path found and current is,
+	 *      optimized and marginal.
+	 */
+	if (!nvme_path_is_disabled(old) && old->ana_state == NVME_ANA_OPTIMIZED &&
+	   (!nvme_ctrl_is_marginal(old->ctrl) || need_marginal))
 		return old;
 
 	if (!found)
