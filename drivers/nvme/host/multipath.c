@@ -337,16 +337,31 @@ static bool nvme_path_is_disabled(struct nvme_ns *ns)
 	return nvme_path_get_state(ns) != NVME_PATH_ENABLED;
 }
 
+static inline bool nvme_path_is_usable(struct nvme_ns *ns)
+{
+	/* Only NVME_ANA_OPTIMIZED and NVME_ANA_NONOPTIMIZED are usable */
+	return !nvme_path_is_disabled(ns) &&
+		(ns->ana_state == NVME_ANA_OPTIMIZED ||
+		 ns->ana_state == NVME_ANA_NONOPTIMIZED);
+}
+
 static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 	__must_hold_shared(&head->srcu)
 {
 	int found_distance = INT_MAX, fallback_distance = INT_MAX, distance;
+	int found_marg_distance = INT_MAX, fallback_marg_distance = INT_MAX;
 	struct nvme_ns *found = NULL, *fallback = NULL, *ns;
+	struct nvme_ns *found_marg = NULL, *fallback_marg = NULL;
+	bool marginal, all_marginal = true;
 
 	list_for_each_entry_srcu(ns, &head->list, siblings,
 				 srcu_read_lock_held(&head->srcu)) {
-		if (nvme_path_is_disabled(ns))
+		if (!nvme_path_is_usable(ns))
 			continue;
+
+		marginal = nvme_ctrl_is_marginal(ns->ctrl);
+		/* Variable to keep track if all paths are marginal */
+		all_marginal &= marginal;
 
 		if (ns->ctrl->numa_node != NUMA_NO_NODE &&
 		    READ_ONCE(head->subsys->iopolicy) == NVME_IOPOLICY_NUMA)
@@ -356,15 +371,23 @@ static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 
 		switch (ns->ana_state) {
 		case NVME_ANA_OPTIMIZED:
-			if (distance < found_distance) {
+			if (!marginal && distance < found_distance) {
 				found_distance = distance;
 				found = ns;
 			}
+			if (marginal && distance < found_marg_distance) {
+				found_marg_distance = distance;
+				found_marg = ns;
+			}
 			break;
 		case NVME_ANA_NONOPTIMIZED:
-			if (distance < fallback_distance) {
+			if (!marginal && distance < fallback_distance) {
 				fallback_distance = distance;
 				fallback = ns;
+			}
+			if (marginal && distance < fallback_marg_distance) {
+				fallback_marg_distance = distance;
+				fallback_marg = ns;
 			}
 			break;
 		default:
@@ -372,6 +395,13 @@ static struct nvme_ns *__nvme_find_path(struct nvme_ns_head *head, int node)
 		}
 	}
 
+	/* Use marginal paths only if we need to use them */
+	if (all_marginal) {
+		found = found_marg;
+		fallback = fallback_marg;
+	}
+
+	/* No optimized path found, use the fallback */
 	if (!found)
 		found = fallback;
 	if (found)
@@ -480,7 +510,8 @@ static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 static inline bool nvme_path_is_optimized(struct nvme_ns *ns)
 {
 	return nvme_ctrl_state(ns->ctrl) == NVME_CTRL_LIVE &&
-		ns->ana_state == NVME_ANA_OPTIMIZED;
+		ns->ana_state == NVME_ANA_OPTIMIZED &&
+		!nvme_ctrl_is_marginal(ns->ctrl);
 }
 
 static struct nvme_ns *nvme_numa_path(struct nvme_ns_head *head)
