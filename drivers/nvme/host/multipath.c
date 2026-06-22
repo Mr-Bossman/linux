@@ -475,6 +475,8 @@ static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 {
 	struct nvme_ns *best_opt = NULL, *best_nonopt = NULL, *ns;
 	unsigned int min_depth_opt = UINT_MAX, min_depth_nonopt = UINT_MAX;
+	bool opt_is_marginal = true, nonopt_is_marginal = true, marginal;
+
 	unsigned int depth;
 
 	list_for_each_entry_srcu(ns, &head->list, siblings,
@@ -482,22 +484,22 @@ static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 		if (nvme_path_is_disabled(ns))
 			continue;
 
-		if (nvme_ctrl_is_marginal(ns->ctrl))
-			continue;
-
 		depth = atomic_read(&ns->ctrl->nr_active);
+		marginal = nvme_ctrl_is_marginal(ns->ctrl);
 
 		switch (ns->ana_state) {
 		case NVME_ANA_OPTIMIZED:
-			if (depth < min_depth_opt) {
+			if (is_best_distance(opt_is_marginal, marginal, min_depth_opt, depth)) {
 				min_depth_opt = depth;
 				best_opt = ns;
+				opt_is_marginal = marginal;
 			}
 			break;
 		case NVME_ANA_NONOPTIMIZED:
-			if (depth < min_depth_nonopt) {
+			if (is_best_distance(nonopt_is_marginal, marginal, min_depth_nonopt, depth)) {
 				min_depth_nonopt = depth;
 				best_nonopt = ns;
+				nonopt_is_marginal = marginal;
 			}
 			break;
 		default:
