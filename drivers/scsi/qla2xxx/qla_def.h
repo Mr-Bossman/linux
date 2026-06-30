@@ -4912,10 +4912,16 @@ struct purex_item {
 	void (*process_item)(struct scsi_qla_host *vha,
 			     struct purex_item *pkt);
 	atomic_t in_use;
-	uint16_t size;
-	struct {
-		uint8_t iocb[64];
-	} iocb;
+	union {
+		struct {
+			uint16_t __size;
+			uint8_t __iocb[QLA_DEFAULT_PAYLOAD_SIZE];
+		} __packed;
+		struct {
+			uint16_t size;
+			uint8_t iocb[] __counted_by(size);
+		} __packed;
+	};
 };
 
 #include "qla_edif.h"
@@ -5124,7 +5130,6 @@ typedef struct scsi_qla_host {
 		struct list_head head;
 		spinlock_t lock;
 	} purex_list;
-	struct purex_item default_item;
 
 	struct name_list_extended gnl;
 	/* Count of active session/fcport */
@@ -5153,6 +5158,9 @@ typedef struct scsi_qla_host {
 #define DPORT_DIAG_IN_PROGRESS                 BIT_0
 #define DPORT_DIAG_CHIP_RESET_IN_PROGRESS      BIT_1
 	uint16_t dport_status;
+
+	/* Must be last --ends in a flexible-array member. */
+	struct purex_item default_item;
 } scsi_qla_host_t;
 
 struct qla27xx_image_status {
