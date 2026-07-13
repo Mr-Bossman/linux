@@ -465,6 +465,59 @@ static __always_inline size_t __must_check size_sub(size_t minuend, size_t subtr
 #define struct_offset(p, member) (offsetof(typeof(*(p)), member))
 
 /**
+ * __DECLARE_SIZED_FLEX() - helper macro for DECLARE_SIZED_FLEX() family.
+ * Allows for easily declaring a structure with a trailing flexible array member
+ * to have a specific size.
+ *
+ * @obj: object to be given a specific size
+ * @name: Name of the array member.
+ * @count: Number of elements in the array; must be compile-time const.
+ */
+#define __DECLARE_SIZED_FLEX(obj, name, count)	\
+	_Static_assert(__builtin_constant_p(count),		\
+		       "default sized flex array members require compile-time const count");	\
+	union {							\
+		u8 bytes[struct_size_t(obj, name, count)];	\
+		obj;						\
+	}
+
+/**
+ * DECLARE_COUNTED_FLEX_ARRAY() - Declare a counted flexible array
+ *
+ * @type: Type name.
+ * @name: Name of the array member.
+ * @counter: Name of the __counted_by member.
+ */
+#define DECLARE_COUNTED_FLEX_ARRAY(type, name, counter)\
+	struct { \
+		size_t counter; \
+		type name[] __counted_by(counter); \
+	}
+
+/**
+ * DECLARE_SIZED_FLEX() - Declare a structure with a trailing flexible array
+ * member with a default size.
+ *
+ * @type: Type name.
+ * @name: Name of the array member.
+ * @count: Number of elements in the array; must be compile-time const.
+ */
+#define DECLARE_SIZED_FLEX(type, name, count)	\
+	__DECLARE_SIZED_FLEX(type name[], name, count)
+
+/**
+ * DECLARE_COUNTED_SIZED_FLEX() - Declare a structure with a trailing flexible
+ * array member counted by count, with a default size.
+ *
+ * @type: Type name.
+ * @name: Name of the array member.
+ * @counter: Name of the __counted_by member.
+ * @count: Number of elements in the array; must be compile-time const.
+ */
+#define DECLARE_COUNTED_SIZED_FLEX(type, name, counter, count)	\
+	__DECLARE_SIZED_FLEX(DECLARE_COUNTED_FLEX_ARRAY(type, name, counter), name, count)
+
+/**
  * __DEFINE_FLEX() - helper macro for DEFINE_FLEX() family.
  * Enables caller macro to pass arbitrary trailing expressions
  *
@@ -477,10 +530,7 @@ static __always_inline size_t __must_check size_sub(size_t minuend, size_t subtr
 #define __DEFINE_FLEX(type, name, member, count, trailer...)			\
 	_Static_assert(__builtin_constant_p(count),				\
 		       "onstack flex array members require compile-time const count"); \
-	union {									\
-		u8 bytes[struct_size_t(type, member, count)];			\
-		type obj;							\
-	} name##_u trailer;							\
+	__DECLARE_SIZED_FLEX(type obj, member, count) name##_u trailer;		\
 	type *name = (type *)&name##_u
 
 /**
