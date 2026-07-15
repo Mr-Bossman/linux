@@ -754,13 +754,15 @@ fcloop_tgt_fcprqst_done_work(struct work_struct *work)
 		container_of(work, struct fcloop_fcpreq, tio_done_work);
 	struct nvmefc_fcp_req *fcpreq;
 	unsigned long flags;
+	u16 status;
 
 	spin_lock_irqsave(&tfcp_req->reqlock, flags);
 	fcpreq = tfcp_req->fcpreq;
 	tfcp_req->inistate = INI_IO_COMPLETED;
+	status = tfcp_req->status;
 	spin_unlock_irqrestore(&tfcp_req->reqlock, flags);
 
-	fcloop_call_host_done(fcpreq, tfcp_req, tfcp_req->status);
+	fcloop_call_host_done(fcpreq, tfcp_req, status);
 }
 
 
@@ -934,7 +936,6 @@ fcloop_fcp_op(struct nvmet_fc_target_port *tgtport,
 			fcpreq->rcv_rsplen = rsplen;
 			fcpreq->status = 0;
 		}
-		tfcp_req->status = 0;
 		break;
 
 	default:
@@ -944,6 +945,9 @@ fcloop_fcp_op(struct nvmet_fc_target_port *tgtport,
 
 	spin_lock_irqsave(&tfcp_req->reqlock, flags);
 	tfcp_req->active = false;
+	if (op == NVMET_FCOP_RSP || op == NVMET_FCOP_READDATA_RSP ||
+	    op == NVMET_FCOP_READDATA)
+		tfcp_req->status = 0;
 	spin_unlock_irqrestore(&tfcp_req->reqlock, flags);
 
 	tgt_fcpreq->transferred_length = xfrlen;
@@ -967,9 +971,8 @@ fcloop_tgt_fcp_abort(struct nvmet_fc_target_port *tgtport,
 	 */
 	spin_lock_irqsave(&tfcp_req->reqlock, flags);
 	tfcp_req->aborted = true;
-	spin_unlock_irqrestore(&tfcp_req->reqlock, flags);
-
 	tfcp_req->status = NVME_SC_INTERNAL;
+	spin_unlock_irqrestore(&tfcp_req->reqlock, flags);
 
 	/*
 	 * nothing more to do. If io wasn't active, the transport should
