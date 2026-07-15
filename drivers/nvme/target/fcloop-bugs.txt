@@ -1,0 +1,109 @@
+fcloop.c bug report — sorted by severity (highest first)
+=========================================================
+
+1. NULL pointer dereference race on rport->targetport (lines 773, 785)
+----------------------------------------------------------------------
+Severity: Critical — kernel crash in FCP I/O hot path
+
+rport->targetport is checked for NULL at line 773 and dereferenced at
+line 785 with no lock held. A concurrent __unlink_target_port (line 1591)
+can set nport->rport->targetport = NULL between the check and use:
+
+    if (!rport->targetport)                    // line 773
+        return -ECONNREFUSED;
+    // ... no lock ...
+    tfcp_req->tport = rport->targetport->private;  // line 785: NULL deref
+
+Fix: read rport->targetport into a local variable once under a lock (or
+use an RCU/refcount scheme) and use the local for both the NULL check and
+the dereference.
+
+
+2. Memory leak in fcloop_h2t_ls_req on nvmet_fc_rcv_ls_req failure (lines 379-383)
+-----------------------------------------------------------------------------------
+Severity: High — leaks a tls_req on every failed LS receive
+
+When nvmet_fc_rcv_ls_req() returns non-zero, tls_req is never freed.
+Compare with the correct pattern in fcloop_t2h_ls_req (lines 478-479):
+
+    // fcloop_t2h_ls_req — correct:
+    if (ret)
+        kmem_cache_free(lsreq_cache, tls_req);
+
+    // fcloop_h2t_ls_req — bug:
+    ret = nvmet_fc_rcv_ls_req(rport->targetport, rport,
+                  &tls_req->ls_rsp,
+                  lsreq->rqstaddr, lsreq->rqstlen);
+    return ret;  // tls_req leaked when ret != 0
+
+Fix: add the same free-on-error guard before the return.
+
+
+3. Missing initiator LS completion in fcloop_h2t_xmt_ls_rsp (lines 402-404)
+----------------------------------------------------------------------------
+Severity: High — initiator LS request hangs / leaks
+
+When remoteport is NULL, tls_req is freed but the initiator's
+lsreq->done() callback is never called. The initiator side will wait
+indefinitely for a completion that never arrives:
+
+    if (!remoteport) {
+        kmem_cache_free(lsreq_cache, tls_req);  // freed...
+        return 0;  // ...but lsreq->done() never called
+    }
+
+Compare with fcloop_h2t_ls_req (lines 369-376) which properly completes
+the initiator request with -ECONNREFUSED even when the target is absent.
+
+Fix: before freeing tls_req, queue the completion with an error status
+(e.g. set tls_req->status = -ECONNREFUSED and queue it on rport->ls_list),
+or call lsreq->done(lsreq, -ECONNREFUSED) directly if safe in context.
+
+
+4. Data race on tfcp_req->status (lines 927, 962)
+--------------------------------------------------
+Severity: Medium — incorrect error status can reach the host
+
+In fcloop_tgt_fcp_abort, tfcp_req->status is written outside reqlock:
+
+    spin_lock_irqsave(&tfcp_req->reqlock, flags);
+    tfcp_req->aborted = true;
+    spin_unlock_irqrestore(&tfcp_req->reqlock, flags);
+    tfcp_req->status = NVME_SC_INTERNAL;          // line 962: no lock
+
+This races with fcloop_fcp_op writing tfcp_req->status = 0 at line 927
+(also outside the lock) and the read at line 759 in
+fcloop_tgt_fcprqst_done_work. A torn or stale value can propagate to
+fcloop_call_host_done.
+
+Fix: move the status assignment inside the reqlock critical section in
+both fcloop_tgt_fcp_abort and fcloop_fcp_op.
+
+
+5. NULL dereference on scatterlist exhaustion in fcloop_fcp_copy_data (lines 813-815, 835-838)
+----------------------------------------------------------------------------------------------
+Severity: Medium — crash if scatterlist is shorter than offset+length
+
+If sg_next() returns NULL (end of chain), the immediately following
+sg_virt() and ->length dereferences crash:
+
+    io_sg = sg_next(io_sg);      // can return NULL
+    io_p = sg_virt(io_sg);       // NULL deref
+    io_len = io_sg->length;      // NULL deref
+
+The same pattern appears in both the offset-skip loop (line 813) and the
+data-copy loop (lines 835, 843).
+
+Fix: check sg_next() return value for NULL and bail with an error.
+
+
+6. Typo: fclopp_dev_attrs_group (line 1686)
+-------------------------------------------
+Severity: Cosmetic
+
+    static const struct attribute_group fclopp_dev_attrs_group = {
+                                        ^^^^^
+                                        should be fcloop
+
+Not a functional bug (the symbol is only referenced locally), but a
+clear naming inconsistency with the rest of the driver.
