@@ -380,6 +380,9 @@ fcloop_h2t_ls_req(struct nvme_fc_local_port *localport,
 				  &tls_req->ls_rsp,
 				  lsreq->rqstaddr, lsreq->rqstlen);
 
+	if (ret)
+		kmem_cache_free(lsreq_cache, tls_req);
+
 	return ret;
 }
 
