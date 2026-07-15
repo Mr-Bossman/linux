@@ -403,6 +403,7 @@ fcloop_h2t_xmt_ls_rsp(struct nvmet_fc_target_port *targetport,
 	lsrsp->done(lsrsp);
 
 	if (!remoteport) {
+		lsreq->done(lsreq, -ECONNREFUSED);
 		kmem_cache_free(lsreq_cache, tls_req);
 		return 0;
 	}
