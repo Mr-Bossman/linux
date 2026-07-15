@@ -823,6 +823,8 @@ fcloop_fcp_copy_data(u8 op, struct scatterlist *data_sg,
 		io_len -= tlen;
 		if (!io_len) {
 			io_sg = sg_next(io_sg);
+			if (WARN_ON_ONCE(!io_sg))
+				return;
 			io_p = sg_virt(io_sg);
 			io_len = io_sg->length;
 		} else
@@ -846,6 +848,8 @@ fcloop_fcp_copy_data(u8 op, struct scatterlist *data_sg,
 		io_len -= tlen;
 		if ((!io_len) && (length)) {
 			io_sg = sg_next(io_sg);
+			if (WARN_ON_ONCE(!io_sg))
+				return;
 			io_p = sg_virt(io_sg);
 			io_len = io_sg->length;
 		} else
@@ -854,6 +858,8 @@ fcloop_fcp_copy_data(u8 op, struct scatterlist *data_sg,
 		data_len -= tlen;
 		if ((!data_len) && (length)) {
 			data_sg = sg_next(data_sg);
+			if (WARN_ON_ONCE(!data_sg))
+				return;
 			data_p = sg_virt(data_sg);
 			data_len = data_sg->length;
 		} else
