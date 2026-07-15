@@ -769,8 +769,14 @@ fcloop_fcp_req(struct nvme_fc_local_port *localport,
 	struct fcloop_rport *rport = remoteport->private;
 	struct fcloop_ini_fcpreq *inireq = fcpreq->private;
 	struct fcloop_fcpreq *tfcp_req;
+	struct nvmet_fc_target_port *targetport;
+	unsigned long flags;
 
-	if (!rport->targetport)
+	spin_lock_irqsave(&fcloop_lock, flags);
+	targetport = rport->targetport;
+	spin_unlock_irqrestore(&fcloop_lock, flags);
+
+	if (!targetport)
 		return -ECONNREFUSED;
 
 	tfcp_req = kzalloc_obj(*tfcp_req, GFP_ATOMIC);
@@ -782,7 +788,7 @@ fcloop_fcp_req(struct nvme_fc_local_port *localport,
 	spin_lock_init(&inireq->inilock);
 
 	tfcp_req->fcpreq = fcpreq;
-	tfcp_req->tport = rport->targetport->private;
+	tfcp_req->tport = targetport->private;
 	tfcp_req->inistate = INI_IO_START;
 	spin_lock_init(&tfcp_req->reqlock);
 	INIT_WORK(&tfcp_req->fcp_rcv_work, fcloop_fcp_recv_work);
