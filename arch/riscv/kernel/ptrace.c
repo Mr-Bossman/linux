@@ -36,6 +36,7 @@ enum riscv_regset {
 #endif
 #ifdef CONFIG_RISCV_USER_CFI
 	REGSET_CFI,
+#endif
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 	REGSET_HW_BREAK
 #endif
@@ -376,7 +377,6 @@ static int riscv_cfi_set(struct task_struct *target,
 }
 #endif
 
-static struct user_regset riscv_user_regset[] __ro_after_init = {
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
 static void ptrace_hbptriggered(struct perf_event *bp,
 				struct perf_sample_data *data,
@@ -393,7 +393,7 @@ static int ptrace_hbp_get(struct task_struct *child, unsigned long idx,
 {
 	struct perf_event *bp;
 
-	if (idx >= RV_MAX_TRIGGERS)
+	if (idx >= RISCV_HW_BP_NUM_MAX)
 		return -EINVAL;
 
 	bp = child->thread.ptrace_bps[idx];
@@ -415,7 +415,7 @@ static int ptrace_hbp_set(struct task_struct *child, unsigned long idx,
 	struct perf_event *bp;
 	struct perf_event_attr attr;
 
-	if (idx >= RV_MAX_TRIGGERS)
+	if (idx >= RISCV_HW_BP_NUM_MAX)
 		return -EINVAL;
 
 	bp = child->thread.ptrace_bps[idx];
@@ -521,7 +521,7 @@ static int hw_break_get(struct task_struct *target,
 }
 #endif
 
-static const struct user_regset riscv_user_regset[] = {
+static struct user_regset riscv_user_regset[] __ro_after_init = {
 	[REGSET_X] = {
 		USER_REGSET_NOTE_TYPE(PRSTATUS),
 		.n = ELF_NGREG,

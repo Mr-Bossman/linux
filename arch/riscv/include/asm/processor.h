@@ -119,7 +119,7 @@ struct thread_struct {
 	unsigned long align_ctl;
 	struct __riscv_v_ext_state kernel_vstate;
 #ifdef CONFIG_HAVE_HW_BREAKPOINT
-	struct perf_event *ptrace_bps[RV_MAX_TRIGGERS];
+	struct perf_event *ptrace_bps[RISCV_HW_BP_NUM_MAX];
 #endif
 #ifdef CONFIG_SMP
 	/* Flush the icache on migration */
