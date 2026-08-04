@@ -491,10 +491,6 @@ static __always_inline bool riscv_insn_is_c_jalr(u32 code)
 	({typeof(x) x_ = (x); \
 	(RV_X_MASK(x_, RVG_RS2_OPOFF, RVG_RS2_MASK)); })
 
-#define RV_EXTRACT_RS2_REG(x) \
-	({typeof(x) x_ = (x); \
-	(RV_X(x_, RVG_RS2_OPOFF, RVG_RS2_MASK)); })
-
 #define RV_EXTRACT_RD_REG(x) \
 	({typeof(x) x_ = (x); \
 	(RV_X_MASK(x_, RVG_RD_OPOFF, RVG_RD_MASK)); })
