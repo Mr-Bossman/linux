@@ -31,6 +31,26 @@ To set the desired policy (e.g., round-robin), use one of the following methods:
    1. echo -n "round-robin" > /sys/module/nvme_core/parameters/iopolicy
    2. or add the "nvme_core.iopolicy=round-robin" to cmdline.
 
+FC-NVMe
+-------
+
+On NVMe over Fibre Channel there is an additional state called `marginal`
+All policies will treat this path as offline and will not use it unless
+all other paths are marginal or unavailable. In that case, the policy will
+select the best path based on the policy.
+
+To see the current path state, use one of the following methods:
+  1. cat /sys/class/fc_host/host*/device/rport-*/fc_remote_ports/rport-*/port_state
+  2. cat /sys/devices/virtual/nvme-subsystem/nvme-subsys*/nvme*/state
+To reset a path to online use::
+  echo "Online" > /sys/class/fc_host/host*/device/rport-*/fc_remote_ports/rport-*/port_state
+
+The marginal state is caused by a
+FPIN-LI (Fabric Performance Impact Notification - Link Impact) event.
+FPIN-LI event counters can be seen with::
+
+  cat /sys/class/fc_host/host*/statistics/fpin_li*
+
 
 NUMA
 ----
