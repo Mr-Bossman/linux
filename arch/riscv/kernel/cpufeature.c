@@ -649,6 +649,19 @@ static const struct riscv_isa_ext_data *riscv_get_isa_ext_data(unsigned int ext_
 	return NULL;
 }
 
+const struct riscv_isa_ext_data riscv_alt_early_boot[] = {
+};
+
+static bool riscv_has_alt_early_boot(unsigned int ext_id)
+{
+	for (int i = 0; i < ARRAY_SIZE(riscv_alt_early_boot); i++) {
+		if (riscv_alt_early_boot[i].id == ext_id)
+			return true;
+	}
+
+	return false;
+}
+
 /*
  * "Resolve" a source ISA bitmap into one that matches kernel configuration as
  * well as correct extension dependencies. Some extensions depends on specific
@@ -1259,9 +1272,6 @@ void __init_or_module riscv_cpufeature_patch_func(struct alt_entry *begin,
 	void *oldptr, *altptr;
 	u16 id, value, vendor;
 
-	if (stage == RISCV_ALTERNATIVES_EARLY_BOOT)
-		return;
-
 	for (alt = begin; alt < end; alt++) {
 		id = PATCH_ID_CPUFEATURE_ID(alt->patch_id);
 		vendor = PATCH_ID_CPUFEATURE_ID(alt->vendor_id);
@@ -1282,6 +1292,10 @@ void __init_or_module riscv_cpufeature_patch_func(struct alt_entry *begin,
 			if (alt->vendor_id != 0)
 				continue;
 
+			if (stage == RISCV_ALTERNATIVES_KERNEL_BOOT &&
+				!riscv_has_isa_early_boot(id))
+				continue;
+
 			if (!__riscv_isa_extension_available(NULL, id))
 				continue;
 
@@ -1289,6 +1303,10 @@ void __init_or_module riscv_cpufeature_patch_func(struct alt_entry *begin,
 			if (!riscv_cpufeature_patch_check(id, value))
 				continue;
 		} else if (id >= RISCV_VENDOR_EXT_ALTERNATIVES_BASE) {
+			if (stage == RISCV_ALTERNATIVES_KERNEL_BOOT &&
+				!riscv_has_vendor_alt_early_boot(vendor, id))
+				continue;
+
 			if (!__riscv_isa_vendor_extension_available(VENDOR_EXT_ALL_CPUS, vendor,
 								    id - RISCV_VENDOR_EXT_ALTERNATIVES_BASE))
 				continue;
@@ -1300,10 +1318,16 @@ void __init_or_module riscv_cpufeature_patch_func(struct alt_entry *begin,
 		oldptr = ALT_OLD_PTR(alt);
 		altptr = ALT_ALT_PTR(alt);
 
-		mutex_lock(&text_mutex);
-		patch_text_nosync(oldptr, altptr, alt->alt_len);
-		riscv_alternative_fix_offsets(oldptr, alt->alt_len, oldptr - altptr);
-		mutex_unlock(&text_mutex);
+		/* On vm-alternatives, the mmu isn't running yet */
+		if (stage == RISCV_ALTERNATIVES_EARLY_BOOT) {
+			memcpy(oldptr, altptr, alt->alt_len);
+		} else {
+			mutex_lock(&text_mutex);
+			patch_text_nosync(oldptr, altptr, alt->alt_len);
+			riscv_alternative_fix_offsets(oldptr, alt->alt_len, oldptr - altptr);
+			mutex_unlock(&text_mutex);
+		}
+
 	}
 }
 #endif

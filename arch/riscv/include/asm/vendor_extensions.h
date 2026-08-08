@@ -32,6 +32,8 @@ extern struct riscv_isa_vendor_ext_data_list *riscv_isa_vendor_ext_list[];
 
 extern const size_t riscv_isa_vendor_ext_list_size;
 
+bool riscv_has_vendor_alt_early_boot(unsigned long vendor, unsigned int ext_id);
+
 /*
  * The alternatives need some way of distinguishing between vendor extensions
  * and errata. Incrementing all of the vendor extension keys so they are at

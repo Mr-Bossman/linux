@@ -84,3 +84,47 @@ bool __riscv_isa_vendor_extension_available(int cpu, unsigned long vendor, unsig
 	return test_bit(bit, bmap->isa);
 }
 EXPORT_SYMBOL_GPL(__riscv_isa_vendor_extension_available);
+
+
+static const riscv_isa_vendor_ext_data_list* riscv_get_vendor_alt_early_boot(unsigned long vendor)
+{
+	switch (vendor) {
+	#ifdef CONFIG_RISCV_ISA_VENDOR_EXT_ANDES
+	case ANDES_VENDOR_ID:
+		return &riscv_alt_early_boot_andes;
+	#endif
+	#ifdef CONFIG_RISCV_ISA_VENDOR_EXT_MIPS
+	case MIPS_VENDOR_ID:
+		return &riscv_alt_early_boot_mips;
+	#endif
+	#ifdef CONFIG_RISCV_ISA_VENDOR_EXT_SIFIVE
+	case SIFIVE_VENDOR_ID:
+		return &riscv_alt_early_boot_sifive;
+	#endif
+	#ifdef CONFIG_RISCV_ISA_VENDOR_EXT_THEAD
+	case THEAD_VENDOR_ID:
+		return &riscv_alt_early_boot_thead;
+	#endif
+	default:
+		return NULL;
+	}
+}
+
+bool riscv_has_vendor_alt_early_boot(unsigned long vendor, unsigned int ext_id)
+{
+	struct riscv_isa_vendor_ext_data_list *ext_list;
+
+	if (!IS_ENABLED(CONFIG_RISCV_ISA_VENDOR_EXT))
+		return false;
+
+	ext_list = riscv_get_vendor_alt_early_boot(vendor);
+	if (!ext_list)
+		return false;
+
+	for (int j = 0; j < ext_list->ext_data_count; j++) {
+		 if (ext_list->ext_data[j].id == ext_id)
+			 return true;
+	}
+
+	return false;
+}
