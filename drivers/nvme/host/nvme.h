@@ -520,6 +520,13 @@ struct nvme_ns_ids {
 	u8	csi;
 };
 
+enum nvme_stat_group {
+	NVME_STAT_READ,
+	NVME_STAT_WRITE,
+	NVME_STAT_OTHER,
+	NVME_NUM_STAT_GROUPS
+};
+
 /*
  * Anchor structure for namespaces.  There is one for each namespace in a
  * NVMe subsystem that any of our controllers can see, and the namespace
@@ -1032,7 +1039,39 @@ extern const struct attribute_group *nvme_dev_attr_groups[];
 extern const struct block_device_operations nvme_bdev_ops;
 
 void nvme_delete_ctrl_sync(struct nvme_ctrl *ctrl);
-struct nvme_ns *nvme_find_path(struct nvme_ns_head *head);
+struct nvme_ns *nvme_find_path(struct nvme_ns_head *head, unsigned int op_type);
+
+static inline int __nvme_data_dir(const enum req_op op)
+{
+	if (op == REQ_OP_READ)
+		return NVME_STAT_READ;
+	else if (op == REQ_OP_WRITE)
+		return NVME_STAT_WRITE;
+	else
+		return NVME_STAT_OTHER;
+}
+
+static inline int __nvme_data_dir_passthru(enum nvme_opcode op)
+{
+	if (op == nvme_cmd_read)
+		return NVME_STAT_READ;
+	else if (op == nvme_cmd_write)
+		return NVME_STAT_WRITE;
+	else
+		return NVME_STAT_OTHER;
+}
+
+static inline int nvme_data_dir(struct request *req)
+{
+	if (blk_rq_is_passthrough(req)) {
+		struct nvme_request *nr = nvme_req(req);
+
+		return __nvme_data_dir_passthru(nr->cmd->common.opcode);
+	}
+
+	return __nvme_data_dir(req_op(req));
+}
+
 #ifdef CONFIG_NVME_MULTIPATH
 static inline bool nvme_ctrl_use_ana(struct nvme_ctrl *ctrl)
 {

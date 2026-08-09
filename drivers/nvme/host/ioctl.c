@@ -708,18 +708,29 @@ static int nvme_ns_head_ctrl_ioctl(struct nvme_ns *ns, unsigned int cmd,
 int nvme_ns_head_ioctl(struct block_device *bdev, blk_mode_t mode,
 		unsigned int cmd, unsigned long arg)
 {
+	u8 opcode;
 	struct nvme_ns_head *head = bdev->bd_disk->private_data;
 	bool open_for_write = mode & BLK_OPEN_WRITE;
 	void __user *argp = (void __user *)arg;
 	struct nvme_ns *ns;
 	int srcu_idx, ret = -EWOULDBLOCK;
 	unsigned int flags = 0;
+	unsigned int op_type = NVME_STAT_OTHER;
 
 	if (bdev_is_partition(bdev))
 		flags |= NVME_IOCTL_PARTITION;
 
+	if (cmd == NVME_IOCTL_SUBMIT_IO) {
+		if (get_user(opcode, (u8 *)argp))
+			return -EFAULT;
+		if (opcode == nvme_cmd_write)
+			op_type = NVME_STAT_WRITE;
+		else if (opcode == nvme_cmd_read)
+			op_type = NVME_STAT_READ;
+	}
+
 	srcu_idx = srcu_read_lock(&head->srcu);
-	ns = nvme_find_path(head);
+	ns = nvme_find_path(head, op_type);
 	if (!ns)
 		goto out_unlock;
 
@@ -741,6 +752,7 @@ out_unlock:
 long nvme_ns_head_chr_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
+	u8 opcode;
 	bool open_for_write = file->f_mode & FMODE_WRITE;
 	struct cdev *cdev = file_inode(file)->i_cdev;
 	struct nvme_ns_head *head =
@@ -748,9 +760,19 @@ long nvme_ns_head_chr_ioctl(struct file *file, unsigned int cmd,
 	void __user *argp = (void __user *)arg;
 	struct nvme_ns *ns;
 	int srcu_idx, ret = -EWOULDBLOCK;
+	unsigned int op_type = NVME_STAT_OTHER;
+
+	if (cmd == NVME_IOCTL_SUBMIT_IO) {
+		if (get_user(opcode, (u8 *)argp))
+			return -EFAULT;
+		if (opcode == nvme_cmd_write)
+			op_type = NVME_STAT_WRITE;
+		else if (opcode == nvme_cmd_read)
+			op_type = NVME_STAT_READ;
+	}
 
 	srcu_idx = srcu_read_lock(&head->srcu);
-	ns = nvme_find_path(head);
+	ns = nvme_find_path(head, op_type);
 	if (!ns)
 		goto out_unlock;
 
@@ -770,9 +792,19 @@ int nvme_ns_head_chr_uring_cmd(struct io_uring_cmd *ioucmd,
 	struct cdev *cdev = file_inode(ioucmd->file)->i_cdev;
 	struct nvme_ns_head *head = container_of(cdev, struct nvme_ns_head, cdev);
 	int srcu_idx = srcu_read_lock(&head->srcu);
-	struct nvme_ns *ns = nvme_find_path(head);
+	struct nvme_ns *ns;
 	int ret = -EINVAL;
+	const struct nvme_uring_cmd *cmd = io_uring_sqe128_cmd(ioucmd->sqe,
+						struct nvme_uring_cmd);
+	unsigned int op_type = NVME_STAT_OTHER;
+	__u8 opcode = READ_ONCE(cmd->opcode);
 
+	if (opcode == nvme_cmd_write)
+		op_type = NVME_STAT_WRITE;
+	else if (opcode == nvme_cmd_read)
+		op_type = NVME_STAT_READ;
+
+	ns = nvme_find_path(head, op_type);
 	if (ns)
 		ret = nvme_ns_uring_cmd(ns, ioucmd, issue_flags);
 	srcu_read_unlock(&head->srcu, srcu_idx);
