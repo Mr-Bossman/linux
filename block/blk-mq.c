@@ -1340,12 +1340,14 @@ void blk_mq_start_request(struct request *rq)
 
 	trace_block_rq_issue(rq);
 
-	if (test_bit(QUEUE_FLAG_STATS, &q->queue_flags) &&
-	    !blk_rq_is_passthrough(rq)) {
+	if (test_bit(QUEUE_FLAG_STATS, &q->queue_flags)) {
 		rq->io_start_time_ns = blk_time_get_ns();
-		rq->stats_sectors = blk_rq_sectors(rq);
-		rq->rq_flags |= RQF_STATS;
-		rq_qos_issue(q, rq);
+
+		if (!blk_rq_is_passthrough(rq)) {
+			rq->stats_sectors = blk_rq_sectors(rq);
+			rq->rq_flags |= RQF_STATS;
+			rq_qos_issue(q, rq);
+		}
 	}
 
 	WARN_ON_ONCE(blk_mq_rq_state(rq) != MQ_RQ_IDLE);
