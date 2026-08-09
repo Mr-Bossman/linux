@@ -70,3 +70,22 @@ When to use the queue-depth policy:
   1. High load with small I/Os: Effectively balances load across paths when
      the load is high, and I/O operations consist of small, relatively
      fixed-sized requests.
+
+Latency
+--------
+
+The latency policy manages I/O requests based on path latency. It periodically
+calculates a weight for each path and distributes I/O accordingly. Paths with
+higher latency receive lower weights, resulting in fewer I/O requests being sent
+to them, while paths with lower latency handle a proportionally larger share of
+the I/O load.
+
+When to use the latency policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Homogeneous Path Performance: Utilizes all available paths efficiently when
+   their performance characteristics (e.g., latency, bandwidth) are similar.
+
+2. Heterogeneous Path Performance: Dynamically distributes I/O based on per-path
+   performance characteristics. Paths with lower latency receive a higher share
+   of I/O compared to those with higher latency.
