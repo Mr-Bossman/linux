@@ -361,8 +361,11 @@ static void nvme_mpath_add_sample(struct request *rq, struct nvme_ns *ns)
 	stat->batch_count++;
 	stat->nr_samples++;
 
-	if (now > stat->last_batch_ts && ((now - stat->last_batch_ts) >=
-			NVME_DEFAULT_LATENCY_BATCH_TIMEOUT)) {
+	if (now > stat->last_batch_ts) {
+		u64 timeout = READ_ONCE(head->latency_batch_timeout);
+
+		if ((now - stat->last_batch_ts) < timeout)
+			return;
 
 		/*
 		 * Find simple average latency for the last epoch (~15 sec
@@ -1152,6 +1155,7 @@ int nvme_mpath_alloc_disk(struct nvme_ctrl *ctrl, struct nvme_ns_head *head)
 	INIT_DELAYED_WORK(&head->remove_work, nvme_remove_head_work);
 	head->delayed_removal_secs = 0;
 	head->latency_ewma_shift = NVME_DEFAULT_LATENCY_EWMA_SHIFT;
+	head->latency_batch_timeout = NVME_DEFAULT_LATENCY_BATCH_TIMEOUT;
 
 	/*
 	 * If "multipath_always_on" is enabled, a multipath node is added

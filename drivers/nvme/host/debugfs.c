@@ -146,12 +146,49 @@ static ssize_t nvme_latency_ewma_shift_store(void *data,
 	WRITE_ONCE(head->latency_ewma_shift, res);
 	return count;
 }
+
+static int nvme_latency_batch_timeout_show(void *data, struct seq_file *m)
+{
+	struct nvme_ns_head *head = data;
+
+	seq_printf(m, "%llu\n",
+		div_u64(READ_ONCE(head->latency_batch_timeout), NSEC_PER_SEC));
+	return 0;
+}
+
+static ssize_t nvme_latency_batch_timeout_store(void *data,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct nvme_ns_head *head = data;
+	char kbuf[8];
+	u32 res;
+	int ret;
+	size_t len;
+	char *arg;
+
+	len = min(sizeof(kbuf) - 1, count);
+
+	if (copy_from_user(kbuf, ubuf, len))
+		return -EFAULT;
+
+	kbuf[len] = '\0';
+	arg = strstrip(kbuf);
+
+	ret = kstrtou32(arg, 0, &res);
+	if (ret)
+		return ret;
+
+	WRITE_ONCE(head->latency_batch_timeout, res * NSEC_PER_SEC);
+	return count;
+}
 #endif
 
 static const struct nvme_debugfs_attr nvme_mpath_debugfs_attrs[] = {
 #ifdef CONFIG_NVME_MULTIPATH
 	{"latency_ewma_shift", 0600, nvme_latency_ewma_shift_show,
 			nvme_latency_ewma_shift_store},
+	{"latency_batch_timeout", 0600, nvme_latency_batch_timeout_show,
+			nvme_latency_batch_timeout_store},
 #endif
 	{},
 };

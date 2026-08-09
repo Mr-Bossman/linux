@@ -607,6 +607,7 @@ struct nvme_ns_head {
 	atomic_long_t		io_fail_no_available_path_count;
 	struct nvme_ns * __percpu	*latency_path;
 	u32				latency_ewma_shift;
+	u64				latency_batch_timeout;
 
 #define NVME_NSHEAD_DISK_LIVE		0
 #define NVME_NSHEAD_QUEUE_IF_NO_PATH	1
