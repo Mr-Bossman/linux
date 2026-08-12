@@ -7146,16 +7146,18 @@ lpfc_set_rport_marginal(struct fc_rport *rport, bool marginal)
 		return;
 
 	if (!ndlp) {
-		dev_info(&rport->dev, "Cannot find remote node to ");
-		dev_info(&rport->dev, "set rport marginal, port_id x%x\n",
+		dev_info(&rport->dev, "Cannot find remote node to "
+			 "set rport marginal, port_id x%x\n",
 			 rport->port_id);
 		return;
 	}
 
+	spin_lock(&ndlp->lock);
 	nrport = lpfc_ndlp_get_nrport(ndlp);
 
 	if (nrport && nrport->remoteport)
 		nvme_fc_set_remoteport_fpin(nrport->remoteport, marginal);
+	spin_unlock(&ndlp->lock);
 }
 
 /*
