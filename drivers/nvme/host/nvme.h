@@ -485,6 +485,11 @@ static inline bool nvme_ctrl_is_marginal(struct nvme_ctrl *ctrl)
 	return test_bit(NVME_CTRL_MARGINAL, &ctrl->flags);
 }
 
+static inline void nvme_ctrl_assign_marginal(struct nvme_ctrl *ctrl, bool marginal)
+{
+	return assign_bit(NVME_CTRL_MARGINAL, &ctrl->flags, marginal);
+}
+
 enum nvme_iopolicy {
 	NVME_IOPOLICY_NUMA,
 	NVME_IOPOLICY_RR,
