@@ -1277,9 +1277,9 @@ static ssize_t fc_rport_set_marginal_state(struct device *dev,
 		 */
 		if (rport->port_state == FC_PORTSTATE_ONLINE) {
 			rport->port_state = port_state;
-			spin_unlock_irqrestore(shost->host_lock, flags);
 			if (i->f->set_rport_marginal)
 				i->f->set_rport_marginal(rport, true);
+			spin_unlock_irqrestore(shost->host_lock, flags);
 			return count;
 		}
 		break;
@@ -1292,9 +1292,9 @@ static ssize_t fc_rport_set_marginal_state(struct device *dev,
 		 */
 		if (rport->port_state == FC_PORTSTATE_MARGINAL) {
 			rport->port_state = port_state;
-			spin_unlock_irqrestore(shost->host_lock, flags);
 			if (i->f->set_rport_marginal)
 				i->f->set_rport_marginal(rport, false);
+			spin_unlock_irqrestore(shost->host_lock, flags);
 			return count;
 		}
 		break;
