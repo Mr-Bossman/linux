@@ -1682,7 +1682,7 @@ fcloop_set_marginal_rport(struct device *dev, struct device_attribute *attr,
 		const char *buf, size_t count)
 {
 	struct fcloop_nport *nport;
-	struct fcloop_ctrl_options opts;
+	struct fcloop_ctrl_options opts = {};
 	int ret;
 
 	ret = fcloop_parse_options(&opts, buf);
@@ -1694,8 +1694,10 @@ fcloop_set_marginal_rport(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 
 	nport = fcloop_nport_lookup(opts.wwnn, opts.wwpn);
-	if (!nport || !nport->tport || !nport->tport->remoteport)
+	if (!nport || !nport->tport || !nport->tport->remoteport) {
+		fcloop_nport_put(nport);
 		return -ENOENT;
+	}
 
 	nvme_fc_set_remoteport_fpin(nport->tport->remoteport, opts.marginal);
 	fcloop_nport_put(nport);
