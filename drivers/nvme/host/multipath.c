@@ -798,9 +798,11 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 	 *  - no other usable path found and current is usable.
 	 */
 	/* no other usable path found and current is usable. */
-	if (!nvme_path_is_disabled(old) &&
-	    (old->ana_state == NVME_ANA_OPTIMIZED ||
-	     (!found && old->ana_state == NVME_ANA_NONOPTIMIZED)))
+	if (!nvme_path_is_disabled(old) && !found)
+		return old;
+
+	if (!nvme_path_is_disabled(old) && !nvme_ctrl_is_marginal(old->ctrl) &&
+	    (old->ana_state == NVME_ANA_OPTIMIZED || nvme_ctrl_is_marginal(found->ctrl)))
 		return old;
 
 	if (!found)
