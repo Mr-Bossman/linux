@@ -747,9 +747,9 @@ static void fc_fpin_set_marginal(struct Scsi_Host *shost, struct fc_rport *rport
 	if (rport->port_state == FC_PORTSTATE_ONLINE &&
 	    rport->roles & FC_PORT_ROLE_NVME_TARGET) {
 		rport->port_state = FC_PORTSTATE_MARGINAL;
-		spin_unlock_irqrestore(shost->host_lock, flags);
 		if (i->f->set_rport_marginal)
 			i->f->set_rport_marginal(rport, true);
+		spin_unlock_irqrestore(shost->host_lock, flags);
 		return;
 	}
 
@@ -783,7 +783,10 @@ fc_fpin_pname_stats_update(struct Scsi_Host *shost,
 			if (rport == attach_rport)
 				continue;
 			stats_update(event_type, &rport->fpin_stats);
-			fc_fpin_set_marginal(shost, rport);
+
+			/* Only set marginal if we are updating li stats */
+			if (stats_update == fc_li_stats_update)
+				fc_fpin_set_marginal(shost, rport);
 		}
 	}
 }
