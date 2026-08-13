@@ -1995,12 +1995,8 @@ static int qedf_vport_destroy(struct fc_vport *vport)
 	fc_remove_host(vn_port->host);
 	scsi_remove_host(vn_port->host);
 
-	/*
-	 * Only try to release the exchange manager if the vn_port
-	 * configuration is complete.
-	 */
-	if (vn_port->state == LPORT_ST_READY)
-		fc_exch_mgr_free(vn_port);
+	/* Free the exchange manager */
+	fc_exch_mgr_free(vn_port);
 
 	/* Free memory used by statistical counters */
 	fc_lport_free_stats(vn_port);
