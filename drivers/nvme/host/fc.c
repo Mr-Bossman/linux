@@ -902,12 +902,8 @@ nvme_fc_set_remoteport_fpin(struct nvme_fc_remote_port *portptr, bool marginal)
 	struct nvme_fc_ctrl *ctrl;
 
 	spin_lock_irq(&rport->lock);
-	list_for_each_entry(ctrl, &rport->ctrl_list, ctrl_list) {
-		if (marginal)
-			set_bit(NVME_CTRL_MARGINAL, &ctrl->ctrl.flags);
-		else
-			clear_bit(NVME_CTRL_MARGINAL, &ctrl->ctrl.flags);
-	}
+	list_for_each_entry(ctrl, &rport->ctrl_list, ctrl_list)
+		nvme_ctrl_assign_marginal(&ctrl->ctrl, marginal);
 	spin_unlock_irq(&rport->lock);
 }
 EXPORT_SYMBOL_GPL(nvme_fc_set_remoteport_fpin);
