@@ -312,6 +312,13 @@ static bool nvme_all_paths_marginal(struct nvme_ns_head *head)
 
 	list_for_each_entry_srcu(ns, &head->list, siblings,
 				 srcu_read_lock_held(&head->srcu)) {
+		/* skip paths which are disabled */
+		if (nvme_path_is_disabled(ns))
+			continue;
+		/* skip paths which can not be used */
+		if (old->ana_state != NVME_ANA_OPTIMIZED &&
+		    old->ana_state != NVME_ANA_NONOPTIMIZED)
+			continue;
 		if (!nvme_ctrl_is_marginal(ns->ctrl))
 			return false;
 	}
