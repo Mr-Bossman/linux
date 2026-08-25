@@ -316,8 +316,8 @@ static bool nvme_all_paths_marginal(struct nvme_ns_head *head)
 		if (nvme_path_is_disabled(ns))
 			continue;
 		/* skip paths which can not be used */
-		if (old->ana_state != NVME_ANA_OPTIMIZED &&
-		    old->ana_state != NVME_ANA_NONOPTIMIZED)
+		if (ns->ana_state != NVME_ANA_OPTIMIZED &&
+		    ns->ana_state != NVME_ANA_NONOPTIMIZED)
 			continue;
 		if (!nvme_ctrl_is_marginal(ns->ctrl))
 			return false;
