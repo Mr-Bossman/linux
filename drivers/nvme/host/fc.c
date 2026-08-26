@@ -23,6 +23,8 @@
 enum nvme_fc_queue_flags {
 	NVME_FC_Q_CONNECTED = 0,
 	NVME_FC_Q_LIVE,
+	NVME_FC_Q_CANCEL_ONE,
+	NVME_FC_Q_CANCEL_ALL,
 };
 
 #define NVME_FC_DEFAULT_DEV_LOSS_TMO	60	/* seconds */
@@ -107,6 +109,7 @@ struct nvme_fc_fcp_op {
 
 	struct nvme_fc_cmd_iu	cmd_iu;
 	struct nvme_fc_ersp_iu	rsp_iu;
+	bool			aborted;
 };
 
 struct nvme_fcp_op_w_sgl {
@@ -2233,6 +2236,8 @@ nvme_fc_init_queue(struct nvme_fc_ctrl *ctrl, int idx)
 	 * a native NVME sqe/cqe. More reasonable if FC-NVME IU payload
 	 * structures were used instead.
 	 */
+	clear_bit(NVME_FC_Q_CANCEL_ONE, &queue->flags);
+	clear_bit(NVME_FC_Q_CANCEL_ALL, &queue->flags);
 }
 
 /*
@@ -2531,8 +2536,10 @@ nvme_fc_error_recovery(struct nvme_fc_ctrl *ctrl, char *errmsg)
 static enum blk_eh_timer_return nvme_fc_timeout(struct request *rq)
 {
 	struct nvme_fc_fcp_op *op = blk_mq_rq_to_pdu(rq);
-	struct nvme_fc_ctrl *ctrl = op->ctrl;
-	u16 qnum = op->queue->qnum;
+	struct nvme_fc_ctrl *fc_ctrl = op->ctrl;
+	struct nvme_ctrl *ctrl = &fc_ctrl->ctrl;
+	struct nvme_fc_queue *queue = op->queue;
+	u16 qnum = queue->qnum;
 	struct nvme_fc_cmd_iu *cmdiu = &op->cmd_iu;
 	struct nvme_command *sqe = &cmdiu->sqe;
 
@@ -2540,14 +2547,56 @@ static enum blk_eh_timer_return nvme_fc_timeout(struct request *rq)
 	 * Attempt to abort the offending command. Command completion
 	 * will detect the aborted io and will fail the connection.
 	 */
-	dev_info(ctrl->ctrl.device,
+	dev_info(ctrl->device,
 		"NVME-FC{%d.%d}: io timeout: opcode %d fctype %d (%s) w10/11: "
 		"x%08x/x%08x\n",
-		ctrl->cnum, qnum, sqe->common.opcode, sqe->fabrics.fctype,
+		fc_ctrl->cnum, qnum, sqe->common.opcode, sqe->fabrics.fctype,
 		nvme_fabrics_opcode_str(qnum, sqe),
 		sqe->common.cdw10, sqe->common.cdw11);
-	if (__nvme_fc_abort_op(ctrl, op))
-		nvme_fc_error_recovery(ctrl, "io timeout abort failed");
+
+
+
+
+	if (!op->aborted) {
+		if (!qnum)
+			goto err_recovery;
+
+		if (!nvme_io_command_supported(ctrl, nvme_cmd_cancel)) {
+			error = nvme_submit_abort_req(ctrl, rq, qnum);
+			if (error) {
+				if (error == -EBUSY)
+					return BLK_EH_RESET_TIMER;
+				goto err_recovery;
+			}
+			goto abort;
+		}
+
+		if (!test_and_set_bit(NVME_FC_Q_CANCEL_ONE, &queue->flags)) {
+			action = NVME_CANCEL_ACTION_SINGLE_CMD;
+		} else if (!test_and_set_bit(NVME_FC_Q_CANCEL_ALL,
+						&queue->flags)) {
+			action = NVME_CANCEL_ACTION_MUL_CMD;
+		} else {
+			/* No free reserved commands.
+			 * this means a "multiple commands" cancel
+			 * is currently under execution and this request
+			 * is likely to be canceled. Mark this
+			 * request as aborted and reset the timer.
+			 */
+			goto abort;
+		}
+
+		error = nvme_submit_cancel_req(ctrl, rq, qnum, action);
+		if (error)
+			goto err_recovery;
+
+abort:
+		req->aborted = true;
+		return BLK_EH_RESET_TIMER;
+	}
+
+	if (__nvme_fc_abort_op(fc_ctrl, op))
+		nvme_fc_error_recovery(fc_ctrl, "io timeout abort failed");
 
 	/*
 	 * the io abort has been initiated. Have the reset timer
@@ -2555,6 +2604,11 @@ static enum blk_eh_timer_return nvme_fc_timeout(struct request *rq)
 	 * shortly. Avoids a synchronous wait while the abort finishes.
 	 */
 	return BLK_EH_RESET_TIMER;
+
+err_recovery:
+	nvme_fc_error_recovery(fc_ctrl, "err_recovery");
+	return BLK_EH_RESET_TIMER;
+
 }
 
 static int
@@ -2766,6 +2820,8 @@ nvme_fc_queue_rq(struct blk_mq_hw_ctx *hctx,
 	    !nvme_check_ready(&queue->ctrl->ctrl, rq, queue_ready))
 		return nvme_fail_nonready_command(&queue->ctrl->ctrl, rq);
 
+	op->aborted = false;
+
 	ret = nvme_setup_cmd(ns, rq);
 	if (ret)
 		return ret;
@@ -2815,12 +2871,18 @@ nvme_fc_complete_rq(struct request *rq)
 {
 	struct nvme_fc_fcp_op *op = blk_mq_rq_to_pdu(rq);
 	struct nvme_fc_ctrl *ctrl = op->ctrl;
+	struct nvme_fc_queue *queue = op->queue;
+	bool is_cancel = nvme_is_cancel(op->cmd_iu->sqe);
 
 	atomic_set(&op->state, FCPOP_STATE_IDLE);
 	op->flags &= ~FCOP_FLAGS_TERMIO;
 
 	nvme_fc_unmap_data(ctrl, rq, op);
 	nvme_complete_rq(rq);
+	if (is_cancel) {
+		if (!test_and_clear_bit(NVME_FC_Q_CANCEL_ALL, &queue->flags))
+			clear_bit(NVME_FC_Q_CANCEL_ONE, &queue->flags);
+	}
 	nvme_fc_ctrl_put(ctrl);
 }
 
