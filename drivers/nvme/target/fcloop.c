@@ -1683,6 +1683,7 @@ fcloop_set_marginal_rport(struct device *dev, struct device_attribute *attr,
 {
 	struct fcloop_nport *nport;
 	struct fcloop_ctrl_options opts = {};
+	unsigned long flags;
 	int ret;
 
 	ret = fcloop_parse_options(&opts, buf);
