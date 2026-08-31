@@ -305,6 +305,12 @@ static bool nvme_path_is_disabled(struct nvme_ns *ns)
 	return false;
 }
 
+static bool nvme_path_is_usable(struct nvme_ns *ns) {
+	/* Only NVME_ANA_OPTIMIZED and NVME_ANA_NONOPTIMIZED are usable */
+	return !nvme_path_is_disabled(ns) &&
+		(ns->ana_state == NVME_ANA_OPTIMIZED ||
+		 ns->ana_state == NVME_ANA_NONOPTIMIZED);
+}
 
 static bool nvme_all_paths_marginal(struct nvme_ns_head *head)
 {
@@ -312,12 +318,8 @@ static bool nvme_all_paths_marginal(struct nvme_ns_head *head)
 
 	list_for_each_entry_srcu(ns, &head->list, siblings,
 				 srcu_read_lock_held(&head->srcu)) {
-		/* skip paths which are disabled */
-		if (nvme_path_is_disabled(ns))
-			continue;
 		/* skip paths which can not be used */
-		if (ns->ana_state != NVME_ANA_OPTIMIZED &&
-		    ns->ana_state != NVME_ANA_NONOPTIMIZED)
+		if (!nvme_path_is_usable(ns))
 			continue;
 		if (!nvme_ctrl_is_marginal(ns->ctrl))
 			return false;
