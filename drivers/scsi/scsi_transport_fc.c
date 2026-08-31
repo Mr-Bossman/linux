@@ -648,7 +648,8 @@ fc_find_rport_by_wwpn(struct Scsi_Host *shost, u64 wwpn)
 	spin_lock_irqsave(shost->host_lock, flags);
 
 	list_for_each_entry(rport, &fc_host_rports(shost), peers) {
-		if (rport->port_state != FC_PORTSTATE_ONLINE)
+		if (rport->port_state != FC_PORTSTATE_ONLINE &&
+		    rport->port_state != FC_PORTSTATE_MARGINAL)
 			continue;
 
 		if (rport->port_name == wwpn) {
