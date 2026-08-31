@@ -398,9 +398,9 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 		return __nvme_find_path(head, node);
 
 	if (list_is_singular(&head->list)) {
-		if (nvme_path_is_disabled(old))
-			return NULL;
-		return old;
+		if (nvme_path_is_usable(old))
+			return old;
+		return NULL;
 	}
 
 	for (ns = nvme_next_ns(head, old);
