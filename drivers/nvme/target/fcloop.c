@@ -1694,7 +1694,10 @@ fcloop_set_marginal_rport(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 
 	nport = fcloop_nport_lookup(opts.wwnn, opts.wwpn);
-	if (!nport || !nport->tport || !nport->tport->remoteport) {
+	if (!nport)
+		return -ENOENT;
+
+	if (!nport->tport || !nport->tport->remoteport) {
 		fcloop_nport_put(nport);
 		return -ENOENT;
 	}
