@@ -1697,12 +1697,15 @@ fcloop_set_marginal_rport(struct device *dev, struct device_attribute *attr,
 	if (!nport)
 		return -ENOENT;
 
-	if (!nport->tport || !nport->tport->remoteport) {
+	spin_lock_irqsave(&fcloop_lock, flags);
+	if (!nport->rport || !nport->rport->remoteport) {
+		spin_unlock_irqrestore(&fcloop_lock, flags);
 		fcloop_nport_put(nport);
 		return -ENOENT;
 	}
 
-	nvme_fc_set_remoteport_fpin(nport->tport->remoteport, opts.marginal);
+	nvme_fc_set_remoteport_fpin(nport->rport->remoteport, opts.marginal);
+	spin_unlock_irqrestore(&fcloop_lock, flags);
 	fcloop_nport_put(nport);
 
 	return count;
