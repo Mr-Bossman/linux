@@ -392,7 +392,7 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 	int node = numa_node_id();
 	struct nvme_ns *old = srcu_dereference(head->current_path[node],
 					       &head->srcu);
-	bool need_marginal = nvme_all_paths_marginal(head);
+	bool need_marginal;
 
 	if (unlikely(!old))
 		return __nvme_find_path(head, node);
@@ -402,6 +402,8 @@ static struct nvme_ns *nvme_round_robin_path(struct nvme_ns_head *head)
 			return old;
 		return NULL;
 	}
+
+	need_marginal = nvme_all_paths_marginal(head);
 
 	for (ns = nvme_next_ns(head, old);
 	     ns && ns != old;
