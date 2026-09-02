@@ -3994,3 +3994,83 @@ module_exit(nvme_fc_exit_module);
 MODULE_DESCRIPTION("NVMe host FC transport driver");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("nvme-fc");
+
+
+struct parent_t {
+	/* holds start (next) and end (prev) of array */
+	struct list_head		child_list;
+	spinlock_t			lock;
+} __aligned(sizeof(u64));	/* alignment for other things alloc'd with */
+
+
+struct child_t {
+	struct parent_t		*parent;
+	struct list_head	child_list;	/* parent->child_list */
+	struct kref		ref;
+};
+
+static void
+child_free(struct kref *ref)
+{
+	struct child_t *child =
+		container_of(ref, struct child_t, ref);
+	unsigned long flags;
+
+	/* remove from rport list */
+	spin_lock_irqsave(&child->parent->lock, flags);
+	list_del(&child->child_list);
+	spin_unlock_irqrestore(&child->parent->lock, flags);
+
+	kfree(child);
+}
+
+static void
+child_put(struct child_t *child)
+{
+	kref_put(&child->ref, child_free);
+}
+
+static int
+child_get(struct child_t *child)
+{
+	return kref_get_unless_zero(&child->ref);
+}
+
+
+void children_do_magic(struct parent_t *parent,
+		       void (*do_magic)(struct child_t *))
+{
+	struct child_t *child, *tmp;
+	bool first = true;
+	unsigned long flags;
+
+	spin_lock_irqsave(&parent->lock, flags);
+
+	list_for_each_entry_safe(child, tmp, &parent->child_list, child_list) {
+		if (first && !child_get(child))
+			continue;
+		first = false;
+
+		list_for_each_entry_from(tmp, &parent->child_list, child_list) {
+			if (child_get(tmp))
+				break;
+		}
+
+		spin_unlock_irqrestore(&parent->lock, flags);
+		do_magic(child);
+		child_put(child);
+		spin_lock_irqsave(&parent->lock, flags);
+	}
+
+	spin_unlock_irqrestore(&parent->lock, flags);
+}
+
+
+void parent_add_child(struct parent_t *parent, struct child_t *child) {
+	unsigned long flags;
+
+	spin_lock_irqsave(&parent->lock, flags);
+	list_add_tail(&child->child_list, &parent->child_list);
+	spin_unlock_irqrestore(&parent->lock, flags);
+
+}
