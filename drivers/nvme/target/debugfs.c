@@ -256,13 +256,13 @@ void nvmet_debugfs_ns_free(struct nvmet_ns *ns)
 	ns->debugfs_dir = NULL;
 }
 
-#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
 static int nvmet_ctrl_delay_show(struct seq_file *m, void *p)
 {
 	struct nvmet_ctrl *ctrl = m->private;
 	int delay_count = atomic_read(&ctrl->delay_count);
 
-	seq_printf(m, "%u %u\n", delay_count, ctrl->delay_msec);
+	seq_printf(m, "%d %u 0x%x 0x%x\n", delay_count, ctrl->delay_msec,
+		   ctrl->delay_io_op, ctrl->delay_admin_op);
 	return 0;
 }
 
@@ -273,7 +273,9 @@ static ssize_t nvmet_ctrl_delay_write(struct file *file, const char __user *buf,
 	struct nvmet_ctrl *ctrl = m->private;
 	char delay_buf[22] = {};
 	int delay_count;
-	int delay_msec;
+	unsigned int delay_msec;
+	int delay_io_op;
+	int delay_admin_op;
 	int n;
 
 	if (count >= sizeof(delay_buf))
@@ -281,16 +283,23 @@ static ssize_t nvmet_ctrl_delay_write(struct file *file, const char __user *buf,
 	if (copy_from_user(delay_buf, buf, count))
 		return -EFAULT;
 
-	n = sscanf(delay_buf, "%u %u", &delay_count, &delay_msec);
-	if (n < 1 || n > 2)
+	/* delay_*_op = op, delay matching op.
+	 * delay_*_op = -1, delay all.
+	 * delay_*_op > 0xff, don't delay.
+	 */
+	n = sscanf(delay_buf, "%d %u 0x%x 0x%x", &delay_count, &delay_msec,
+		   &delay_io_op, &delay_admin_op);
+	if (n < 1 || n > 4)
 		return -EINVAL;
-	if (n == 2)
+	if (n >= 2)
 		ctrl->delay_msec = delay_msec;
 	atomic_set(&ctrl->delay_count, delay_count);
+
+	ctrl->delay_io_op = (n >= 3) ? delay_io_op : -1;
+	ctrl->delay_admin_op = (n == 4) ? delay_admin_op : -1;
 	return count;
 }
 NVMET_DEBUGFS_RW_ATTR(nvmet_ctrl_delay);
-#endif /* CONFIG_NVME_TARGET_DELAY_REQUESTS */
 
 int nvmet_debugfs_ctrl_setup(struct nvmet_ctrl *ctrl)
 {
@@ -323,10 +332,10 @@ int nvmet_debugfs_ctrl_setup(struct nvmet_ctrl *ctrl)
 	debugfs_create_file("tls_key", S_IRUSR, ctrl->debugfs_dir, ctrl,
 			    &nvmet_ctrl_tls_key_fops);
 #endif
-#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
-	debugfs_create_file("delay", S_IWUSR, ctrl->debugfs_dir, ctrl,
-			    &nvmet_ctrl_delay_fops);
-#endif
+	if (IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)) {
+		debugfs_create_file("delay", S_IWUSR, ctrl->debugfs_dir, ctrl,
+				    &nvmet_ctrl_delay_fops);
+	}
 	return 0;
 }
 

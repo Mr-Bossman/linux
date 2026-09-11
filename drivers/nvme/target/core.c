@@ -1810,33 +1810,75 @@ ssize_t nvmet_ctrl_host_traddr(struct nvmet_ctrl *ctrl,
 	return ctrl->ops->host_traddr(ctrl, traddr, traddr_len);
 }
 
-#if IS_ENABLED(CONFIG_NVME_TARGET_DELAY_REQUESTS)
 static void nvmet_delayed_execute_req(struct work_struct *work) {
 	struct nvmet_req *req =
 		container_of(to_delayed_work(work), struct nvmet_req, req_work);
 	req->execute(req);
 }
 
-void nvmet_execute_request(struct nvmet_req *req) {
+void nvmet_execute_delayed_request(struct nvmet_req *req) {
 	struct nvmet_ctrl *ctrl = req->sq->ctrl;
 	int delay_count;
-	u32 delay_msec;
+	unsigned int delay_msec;
+	int delay_io_op;
+	int delay_admin_op;
 
-	if (unlikely(req->sq->qid == 0))
-		return req->execute(req);
-
-	if (ctrl) {
-		delay_count = atomic_dec_if_positive(&ctrl->delay_count) + 1;
-		delay_msec = ctrl->delay_msec;
+	/* If ctrl is null, execute
+	 * the request immediately
+	 */
+	if(!ctrl) {
+		req->execute(req);
+		return;
 	}
-	if (!(ctrl && delay_count && delay_msec))
-		return req->execute(req);
+
+	delay_msec = ctrl->delay_msec;
+	delay_io_op = ctrl->delay_io_op;
+	delay_admin_op = ctrl->delay_admin_op;
+
+	/* Only continue if we should delay */
+	if (!delay_msec) {
+		req->execute(req);
+		return;
+	}
+
+	/* delay_admin_op = -1 means delay all.
+	 * delay_admin_op > 255 means don't delay.
+	 * Only execute admin commands instantly,
+	 * if the delay_admin_op is not -1, and
+	 * delay_admin_op doesnt match opcode
+	 */
+	if (unlikely(req->sq->qid == 0) && delay_admin_op != -1 &&
+	    req->cmd->common.opcode != delay_admin_op) {
+		req->execute(req);
+		return;
+	}
+
+	/* delay_io_op = -1 means delay all.
+	 * delay_io_op > 255 means don't delay.
+	 * Only execute io commands instantly,
+	 * if the delay_io_op is not -1, and
+	 * delay_io_op doesnt match opcode
+	 */
+	if (likely(req->sq->qid != 0) && delay_io_op != -1 &&
+	    req->cmd->common.opcode != delay_io_op) {
+		req->execute(req);
+		return;
+	}
+
+	/* Only decrement the delay count if we have matched
+	 * the delay criteria. If the delay count is 0,
+	 * continue as normal.
+	 */
+	delay_count = atomic_dec_if_positive(&ctrl->delay_count) + 1;
+	if (!delay_count) {
+		req->execute(req);
+		return;
+	}
 
 	INIT_DELAYED_WORK(&req->req_work, nvmet_delayed_execute_req);
 	queue_delayed_work(nvmet_wq, &req->req_work, msecs_to_jiffies(delay_msec));
 }
-EXPORT_SYMBOL_GPL(nvmet_execute_request);
-#endif
+EXPORT_SYMBOL_GPL(nvmet_execute_delayed_request);
 
 static struct nvmet_subsys *nvmet_find_get_subsys(struct nvmet_port *port,
 		const char *subsysnqn)
