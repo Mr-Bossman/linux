@@ -356,6 +356,7 @@ struct nvmet_subsys {
 	struct dentry		*debugfs_dir;
 #endif
 	u16			cqt;
+	bool			tbkas;
 	u16			max_qid;
 
 	u64			ver;
