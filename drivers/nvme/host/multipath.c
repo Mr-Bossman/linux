@@ -473,27 +473,42 @@ static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 	__must_hold_shared(&head->srcu)
 {
 	struct nvme_ns *best_opt = NULL, *best_nonopt = NULL, *ns;
+	struct nvme_ns *best_opt_marg = NULL, *best_nonopt_marg = NULL;
 	unsigned int min_depth_opt = UINT_MAX, min_depth_nonopt = UINT_MAX;
+	unsigned int min_depth_opt_marg = UINT_MAX, min_depth_nonopt_marg = UINT_MAX;
 	unsigned int depth;
+	bool marginal, all_marginal = true;
 
 	list_for_each_entry_srcu(ns, &head->list, siblings,
 				 srcu_read_lock_held(&head->srcu)) {
-		if (nvme_path_is_disabled(ns))
+		if (!nvme_path_is_usable(ns))
 			continue;
+
+		marginal = nvme_ctrl_is_marginal(ns->ctrl);
+		/* Variable to keep track if all paths are marginal */
+		all_marginal &= marginal;
 
 		depth = atomic_read(&ns->ctrl->nr_active);
 
 		switch (ns->ana_state) {
 		case NVME_ANA_OPTIMIZED:
-			if (depth < min_depth_opt) {
+			if (!marginal && depth < min_depth_opt) {
 				min_depth_opt = depth;
 				best_opt = ns;
 			}
+			if (marginal && depth < min_depth_opt_marg) {
+				min_depth_opt_marg = depth;
+				best_opt_marg = ns;
+			}
 			break;
 		case NVME_ANA_NONOPTIMIZED:
-			if (depth < min_depth_nonopt) {
+			if (!marginal && depth < min_depth_nonopt) {
 				min_depth_nonopt = depth;
 				best_nonopt = ns;
+			}
+			if (marginal && depth < min_depth_nonopt_marg) {
+				min_depth_nonopt_marg = depth;
+				best_nonopt_marg = ns;
 			}
 			break;
 		default:
@@ -504,7 +519,11 @@ static struct nvme_ns *nvme_queue_depth_path(struct nvme_ns_head *head)
 			return best_opt;
 	}
 
-	return best_opt ? best_opt : best_nonopt;
+	/* Use marginal paths only if we need to use them */
+	if (all_marginal)
+		return best_opt_marg ? best_opt_marg : best_nonopt_marg;
+	else
+		return best_opt ? best_opt : best_nonopt;
 }
 
 static inline bool nvme_path_is_optimized(struct nvme_ns *ns)
